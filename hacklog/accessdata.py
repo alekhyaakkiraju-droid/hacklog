@@ -1,6 +1,9 @@
 from sqlalchemy.orm import *
 from entities import *
 from session import Session
+from logging_config import get_logger
+
+logger = get_logger("accessdata")
 
 class GenericDao:
 
@@ -8,11 +11,21 @@ class GenericDao:
 		session = Session()
 		session.add(entity)
 		session.commit()
+		logger.debug(
+			"entity_saved",
+			operation="save_entity",
+			entity_type=type(entity).__name__,
+		)
 
 	def mergeEntity(self, entity):
 		session = Session()
 		session.merge(entity)
 		session.commit()
+		logger.debug(
+			"entity_merged",
+			operation="merge_entity",
+			entity_type=type(entity).__name__,
+		)
 
 class UserDao:
 	
