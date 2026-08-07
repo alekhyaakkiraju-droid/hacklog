@@ -19,12 +19,14 @@ from aiosmtplib.errors import SMTPAuthenticationError, SMTPConnectError, SMTPExc
 
 try:
     from hacklog.config import SmtpConfig
-    from hacklog.entities import EventLog, User
+    from hacklog.entities import AuditRecord, EventLog, User
     from hacklog.logging_config import get_logger
+    from hacklog.repositories import AuditRepository
 except ImportError:
     from config import SmtpConfig
-    from entities import EventLog, User
+    from entities import AuditRecord, EventLog, User
     from logging_config import get_logger
+    from repositories import AuditRepository
 
 logger = get_logger("alerting")
 
@@ -258,6 +260,7 @@ class AlertService:
         max_retry_attempts: int = DEFAULT_MAX_RETRY_ATTEMPTS,
         retry_base_delay_seconds: float = DEFAULT_RETRY_BASE_DELAY_SECONDS,
         dead_letter_path: str | Path | None = None,
+        audit_repository: AuditRepository | None = None,
     ) -> None:
         if smtp_config is None:
             raise TypeError("AlertService requires SmtpConfig from ConfigManager")
@@ -278,6 +281,39 @@ class AlertService:
         self._smtp_sender = smtp_sender or default_smtp_sender
         self._max_retry_attempts = max_retry_attempts
         self._retry_base_delay_seconds = retry_base_delay_seconds
+        self._audit_repository = audit_repository
+
+    def _emit_audit_record(
+        self,
+        user: User,
+        event_log: EventLog,
+        action: str,
+        reason: str,
+    ) -> None:
+        """Emit an audit event as a structured log entry and optionally persist it."""
+        timestamp = datetime.now(UTC)
+        logger.info(
+            "audit_event",
+            audit=True,
+            actor=user.username,
+            action=action,
+            source_ip=event_log.ip_address,
+            resource=event_log.server,
+            outcome=action,
+            details={"reason": reason, "score": user.score},
+            timestamp=timestamp.isoformat(),
+        )
+        if self._audit_repository is not None:
+            record = AuditRecord(
+                timestamp=timestamp,
+                actor=user.username,
+                source_ip=event_log.ip_address,
+                resource=event_log.server,
+                action=action,
+                outcome=action,
+                details={"reason": reason, "score": user.score},
+            )
+            self._audit_repository.save_audit_record(record)
 
     async def send_alert(self, user: User, event_log: EventLog) -> None:
         if not await self._circuit.allow_request():
@@ -291,6 +327,7 @@ class AlertService:
             await self._dead_letter.write(
                 self._dead_letter_payload(user, event_log, reason="circuit_open")
             )
+            self._emit_audit_record(user, event_log, "alert_suppressed", "circuit_open")
             return
 
         logger.info(
@@ -325,6 +362,7 @@ class AlertService:
                     attempt=attempt,
                     circuit_state=self._circuit.state.value,
                 )
+                self._emit_audit_record(user, event_log, "alert_sent", "smtp_success")
                 return
             except Exception as exc:
                 last_error = exc
@@ -345,13 +383,15 @@ class AlertService:
                 await asyncio.sleep(delay)
 
         await self._circuit.record_failure()
+        reason = str(last_error) if last_error else "unknown_error"
         await self._dead_letter.write(
             self._dead_letter_payload(
                 user,
                 event_log,
-                reason=str(last_error) if last_error else "unknown_error",
+                reason=reason,
             )
         )
+        self._emit_audit_record(user, event_log, "alert_suppressed", reason)
 
     def send_email_alert(self, user: User, event_log: EventLog) -> None:
         """Sync adapter for the legacy scoring pipeline."""

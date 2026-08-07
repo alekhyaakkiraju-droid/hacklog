@@ -193,6 +193,39 @@ class SyslogMsg:
         self.date = datetime.now()
 
 
+class AuditRecord(Base):
+    """Append-only audit record for scoring and alerting events."""
+
+    __tablename__ = "audit_records"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True)
+    timestamp = Column("timestamp", DateTime, nullable=False)
+    actor = Column("actor", String, nullable=False)
+    source_ip = Column("source_ip", String, nullable=True)
+    resource = Column("resource", String, nullable=True)
+    action = Column("action", String, nullable=False)
+    outcome = Column("outcome", String, nullable=True)
+    details = Column("details", JSON, nullable=True)
+
+    def __init__(
+        self,
+        timestamp: datetime,
+        actor: str,
+        source_ip: str | None,
+        resource: str | None,
+        action: str,
+        outcome: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        self.timestamp = timestamp
+        self.actor = actor
+        self.source_ip = source_ip
+        self.resource = resource
+        self.action = action
+        self.outcome = outcome
+        self.details = details
+
+
 class MailConf:
     def __init__(self, email_test: bool = False) -> None:
         self.email_test = email_test

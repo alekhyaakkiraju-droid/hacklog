@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import TypeVar
 
-from entities import Days, EventLog, Hours, IpAddress, Server, User
+from entities import AuditRecord, Days, EventLog, Hours, IpAddress, Server, User
 from logging_config import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -126,7 +126,7 @@ class UserRepository(BaseRepository):
 
 
 class AuditRepository(BaseRepository):
-    """Append-only event log persistence."""
+    """Append-only event log and audit record persistence."""
 
     def save_event(self, event_log: EventLog) -> None:
         with self._session_scope() as session:
@@ -137,4 +137,17 @@ class AuditRepository(BaseRepository):
                 operation="save_event",
                 username=event_log.username,
                 source_ip=event_log.ip_address,
+            )
+
+    def save_audit_record(self, record: AuditRecord) -> None:
+        """Persist an audit record. Append-only — no update or delete operations."""
+        with self._session_scope() as session:
+            session.add(record)
+            session.commit()
+            logger.debug(
+                "audit_record_saved",
+                operation="save_audit_record",
+                actor=record.actor,
+                action=record.action,
+                resource=record.resource,
             )
