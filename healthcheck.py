@@ -5,10 +5,9 @@ import socket
 import sys
 
 port = int(os.environ.get("HACKLOG_SYSLOG_PORT", "10514"))
-# Use the same bind address as the server to guarantee a conflict.
-# Defaults to 0.0.0.0 (wildcard), which conflicts whether the server is
-# listening on 0.0.0.0 or on a specific address such as 127.0.0.1.
-bind_addr = os.environ.get("HACKLOG_SYSLOG_BIND_ADDRESS", "0.0.0.0")
+# Bind to loopback to probe whether the syslog port is already in use.
+# If the server listens on 0.0.0.0 or 127.0.0.1, this bind attempt conflicts.
+bind_addr = "127.0.0.1"
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:

@@ -8,15 +8,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /build
 
-# Copy metadata files first for better layer caching.
-# hatchling (the build backend) reads README.md and LICENSE when building the wheel.
-COPY pyproject.toml README.md LICENSE ./
+# Copy locked runtime deps first for layer caching (Sonar S8544).
+COPY requirements-runtime.txt pyproject.toml README.md LICENSE ./
+
+RUN pip install --no-cache-dir --only-binary=:all: -r requirements-runtime.txt
 
 # Copy application source.  Changing only source invalidates this layer onward
-# but preserves the metadata layer above.
+# but preserves the dependency layer above.
 COPY hacklog/ ./hacklog/
 
-RUN pip install --no-cache-dir .
+# Install the local package without re-resolving deps (Sonar S8541/S8544).
+RUN pip install --no-cache-dir --only-binary=:all: --no-deps .
 
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
