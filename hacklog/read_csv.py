@@ -1,5 +1,7 @@
 """CSV replay utility for generating syslog test traffic."""
 
+from __future__ import annotations
+
 import csv
 import logging
 import logging.handlers
@@ -9,17 +11,49 @@ from datetime import datetime
 from pathlib import Path
 from time import sleep
 
-from server import SyslogServer
+try:
+    from hacklog.server import SyslogServer
+except ImportError:
+    from server import SyslogServer
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+
+CSV_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+REQUIRED_CSV_FIELDS = ("Date Time", "User", "IP", "Login_Status", "Server_Name")
+
 
 def _demo_syslog_pid() -> int:
     """Synthetic syslog PID for CSV replay — not used for security purposes."""
     return random.randrange(1000, 9999, 345)  # NOSONAR
 
+
 def _demo_syslog_port() -> int:
     """Synthetic syslog port for CSV replay — not used for security purposes."""
     return random.randrange(1021, 9999, 123)  # NOSONAR
+
+
+def parse_csv_datetime(raw_value: str, *, field_name: str = "Date Time") -> datetime:
+    """Parse a CSV date-time field into a timezone-naive datetime."""
+    if not isinstance(raw_value, str) or not raw_value.strip():
+        msg = (
+            f"Invalid {field_name}: expected non-empty string in "
+            f"'{CSV_DATETIME_FORMAT}' format, got {raw_value!r}"
+        )
+        raise ValueError(msg)
+    try:
+        return datetime.strptime(raw_value.strip(), CSV_DATETIME_FORMAT)
+    except ValueError as exc:
+        msg = (
+            f"Invalid {field_name}: expected format '{CSV_DATETIME_FORMAT}', "
+            f"got {raw_value!r}"
+        )
+        raise ValueError(msg) from exc
+
+
+def format_syslog_datetime(event_time: datetime) -> str:
+    """Format a datetime for DATE_TIME tokens in replayed syslog messages."""
+    return event_time.strftime(CSV_DATETIME_FORMAT)
+
 
 def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path:
     """Resolve a CSV path and reject traversal outside the base directory."""
@@ -35,88 +69,75 @@ def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path
         raise FileNotFoundError(f"CSV file not found: {resolved}")
     return resolved
 
+
+def _is_successful_login(login_status: str) -> bool:
+    return login_status.strip().upper() == "TRUE"
+
+
 class ReadCSVFiles:
     def __init__(self, test_enabled: bool = False) -> None:
         self.test_enabled = test_enabled
 
     def log_messages(self, log_data: dict[str, str]) -> None:
-        sys_log_message = ""
-        log_data["Date Time"] = datetime.strptime(
-            log_data["Date Time"], "%Y-%m-%d %H:%M:%S"
-        )
-        if self.test_enabled:
-            if log_data["Login_Status"] == "TRUE" or log_data["Login_Status"] == "True":
+        missing = [field for field in REQUIRED_CSV_FIELDS if field not in log_data]
+        if missing:
+            missing_fields = ", ".join(missing)
+            msg = f"CSV row missing required field(s): {missing_fields}"
+            raise ValueError(msg)
+
+        event_time = parse_csv_datetime(log_data["Date Time"])
+        date_time_token = format_syslog_datetime(event_time)
+        pid = _demo_syslog_pid()
+        port = _demo_syslog_port()
+
+        if _is_successful_login(log_data["Login_Status"]):
+            if self.test_enabled:
                 sys_log_message = (
-                    "sshd[%d]: Accepted publickey for %s from %s port %d ssh2 DATE_TIME %s HOST %s"
-                    % (
-                        _demo_syslog_pid(),
-                        log_data["User"],
-                        log_data["IP"],
-                        _demo_syslog_port(),
-                        log_data["Date Time"],
-                        log_data["Server_Name"],
-                    )
+                    f"sshd[{pid}]: Accepted publickey for {log_data['User']} "
+                    f"from {log_data['IP']} port {port} ssh2 "
+                    f"DATE_TIME {date_time_token} HOST {log_data['Server_Name']}"
                 )
             else:
                 sys_log_message = (
-                    "sshd[%d]: pam_unix(sshd:auth): authentication failure; login= uid=0 "
-                    "euid=0 tty=ssh ruser= rhost=%s user=%s DATE_TIME %s HOST %s"
-                    % (
-                        _demo_syslog_pid(),
-                        log_data["IP"],
-                        log_data["User"],
-                        log_data["Date Time"],
-                        log_data["Server_Name"],
-                    )
+                    f"sshd[{pid}]: Accepted publickey for {log_data['User']} "
+                    f"from {log_data['IP']} port {port} ssh2"
                 )
+        elif self.test_enabled:
+            sys_log_message = (
+                f"sshd[{pid}]: pam_unix(sshd:auth): authentication failure; "
+                f"login= uid=0 euid=0 tty=ssh ruser= rhost={log_data['IP']} "
+                f"user={log_data['User']} DATE_TIME {date_time_token} "
+                f"HOST {log_data['Server_Name']}"
+            )
         else:
-            if log_data["Login_Status"] == "TRUE" or log_data["Login_Status"] == "True":
-                sys_log_message = (
-                    "sshd[%d]: Accepted publickey for %s from %s port %d ssh2"
-                    % (
-                        _demo_syslog_pid(),
-                        log_data["User"],
-                        log_data["IP"],
-                        _demo_syslog_port(),
-                    )
-                )
-            else:
-                sys_log_message = (
-                    "sshd[%d]: pam_unix(sshd:auth): authentication failure; login= uid=0 "
-                    "euid=0 tty=ssh ruser= rhost=%s user=%s"
-                    % (
-                        _demo_syslog_pid(),
-                        log_data["IP"],
-                        log_data["User"],
-                    )
-                )
+            sys_log_message = (
+                f"sshd[{pid}]: pam_unix(sshd:auth): authentication failure; "
+                f"login= uid=0 euid=0 tty=ssh ruser= rhost={log_data['IP']} "
+                f"user={log_data['User']}"
+            )
 
         logger.info(sys_log_message)
 
     def read_line_generate_logs(self, reader: csv.reader) -> None:
         row_num = 0
-        file_data: list[str] = []
+        headers: list[str] = []
         for row in reader:
-            each_row_data: dict[str, str] = {}
             if row_num == 0:
-                file_data = row
+                headers = row
             else:
-                col_num = 0
-                for col in row:
-                    each_row_data[file_data[col_num]] = col
-                    col_num += 1
+                each_row_data: dict[str, str] = {}
+                for col_num, col in enumerate(row):
+                    each_row_data[headers[col_num]] = col
                 if row_num % 5 == 0:
                     sleep(50.0 / 1000.0)
                 self.log_messages(each_row_data)
             row_num += 1
 
+
 def main() -> None:
     server = SyslogServer()
     server.parse_config("../conf/server.conf")
-    if server.test_enabled:
-        read_csv = ReadCSVFiles(server.test_enabled)
-    else:
-        read_csv = ReadCSVFiles()
+    read_csv = ReadCSVFiles(server.test_enabled)
 
     if len(sys.argv) >= 3:
         file_name = sys.argv[1]
@@ -125,16 +146,16 @@ def main() -> None:
         file_name = "data"
         ip_address = "127.0.0.1"
 
-    global logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
     handler = logging.handlers.SysLogHandler(address=(ip_address, 10514))
-    logger.addHandler(handler)
+    root_logger.addHandler(handler)
 
     csv_path = resolve_csv_input_path(file_name)
-    with open(csv_path, encoding="utf-8", newline="") as file_object:
+    with csv_path.open(encoding="utf-8", newline="") as file_object:
         reader = csv.reader(file_object)
         read_csv.read_line_generate_logs(reader)
+
 
 if __name__ == "__main__":
     main()
