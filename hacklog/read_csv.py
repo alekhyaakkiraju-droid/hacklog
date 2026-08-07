@@ -1,10 +1,16 @@
-"""CSV replay utility for generating syslog test traffic."""
+"""CSV replay utility for generating syslog test traffic.
+
+CSV rows are replayed as syslog messages for integration testing. Date-time
+fields must match ``HACKLOG_CSV_DATETIME_FORMAT`` (default ``%Y-%m-%d %H:%M:%S``).
+Malformed rows are logged and skipped during batch replay.
+"""
 
 from __future__ import annotations
 
 import csv
 import logging
 import logging.handlers
+import os
 import random
 import sys
 from datetime import datetime
@@ -18,8 +24,15 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-CSV_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+DEFAULT_CSV_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+CSV_DATETIME_FORMAT = DEFAULT_CSV_DATETIME_FORMAT
+CSV_DATETIME_FORMAT_ENV = "HACKLOG_CSV_DATETIME_FORMAT"
 REQUIRED_CSV_FIELDS = ("Date Time", "User", "IP", "Login_Status", "Server_Name")
+
+
+def get_csv_datetime_format() -> str:
+    """Return the strptime/strftime pattern for CSV date-time fields."""
+    return os.environ.get(CSV_DATETIME_FORMAT_ENV, DEFAULT_CSV_DATETIME_FORMAT)
 
 
 def _demo_syslog_pid() -> int:
@@ -32,27 +45,38 @@ def _demo_syslog_port() -> int:
     return random.randrange(1021, 9999, 123)  # NOSONAR
 
 
-def parse_csv_datetime(raw_value: str, *, field_name: str = "Date Time") -> datetime:
+def parse_csv_datetime(
+    raw_value: str | None,
+    *,
+    field_name: str = "Date Time",
+) -> datetime:
     """Parse a CSV date-time field into a timezone-naive datetime."""
+    date_format = get_csv_datetime_format()
+    if raw_value is None:
+        msg = f"Invalid {field_name}: value cannot be None"
+        logger.error(msg)
+        raise ValueError(msg)
     if not isinstance(raw_value, str) or not raw_value.strip():
         msg = (
             f"Invalid {field_name}: expected non-empty string in "
-            f"'{CSV_DATETIME_FORMAT}' format, got {raw_value!r}"
+            f"'{date_format}' format, got {raw_value!r}"
         )
+        logger.error(msg)
         raise ValueError(msg)
     try:
-        return datetime.strptime(raw_value.strip(), CSV_DATETIME_FORMAT)
+        return datetime.strptime(raw_value.strip(), date_format)
     except ValueError as exc:
         msg = (
-            f"Invalid {field_name}: expected format '{CSV_DATETIME_FORMAT}', "
+            f"Invalid {field_name}: expected format '{date_format}', "
             f"got {raw_value!r}"
         )
+        logger.error(msg)
         raise ValueError(msg) from exc
 
 
 def format_syslog_datetime(event_time: datetime) -> str:
     """Format a datetime for DATE_TIME tokens in replayed syslog messages."""
-    return event_time.strftime(CSV_DATETIME_FORMAT)
+    return event_time.strftime(get_csv_datetime_format())
 
 
 def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path:
@@ -130,7 +154,10 @@ class ReadCSVFiles:
                     each_row_data[headers[col_num]] = col
                 if row_num % 5 == 0:
                     sleep(50.0 / 1000.0)
-                self.log_messages(each_row_data)
+                try:
+                    self.log_messages(each_row_data)
+                except ValueError as exc:
+                    logger.error("Skipping CSV row %d: %s", row_num + 1, exc)
             row_num += 1
 
 
