@@ -140,7 +140,10 @@ def clear_context() -> None:
 def render_event_dict(event_dict: dict[str, Any]) -> str:
     """Render an event dictionary as JSON for testing."""
     processed = _mask_pii(None, "", _redact_secrets(None, "", dict(event_dict)))
-    return structlog.processors.JSONRenderer()(None, "", processed)
+    rendered = structlog.processors.JSONRenderer()(None, "", processed)
+    if isinstance(rendered, bytes):
+        return rendered.decode("utf-8")
+    return rendered
 
 
 def parse_json_log_line(line: str) -> dict[str, Any]:
