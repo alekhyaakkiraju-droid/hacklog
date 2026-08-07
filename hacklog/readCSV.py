@@ -6,11 +6,37 @@ import logging.handlers
 import random
 import sys
 from datetime import datetime
+from pathlib import Path
 from time import sleep
 
 from server import SyslogServer
 
 logger = logging.getLogger()
+
+
+def _demo_syslog_pid() -> int:
+    """Synthetic syslog PID for CSV replay — not used for security purposes."""
+    return random.randrange(1000, 9999, 345)  # NOSONAR
+
+
+def _demo_syslog_port() -> int:
+    """Synthetic syslog port for CSV replay — not used for security purposes."""
+    return random.randrange(1021, 9999, 123)  # NOSONAR
+
+
+def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path:
+    """Resolve a CSV path and reject traversal outside the base directory."""
+    base = (base_dir or Path.cwd()).resolve()
+    candidate = Path(file_name)
+    if not candidate.is_absolute():
+        candidate = base / candidate
+    resolved = candidate.resolve()
+    if not resolved.is_relative_to(base):
+        msg = f"CSV path must stay within {base}: {file_name}"
+        raise ValueError(msg)
+    if not resolved.is_file():
+        raise FileNotFoundError(f"CSV file not found: {resolved}")
+    return resolved
 
 
 class ReadCSVFiles:
@@ -25,10 +51,10 @@ class ReadCSVFiles:
                 sys_log_message = (
                     "sshd[%d]: Accepted publickey for %s from %s port %d ssh2 DATE_TIME %s HOST %s"
                     % (
-                        random.randrange(1000, 9999, 345),
+                        _demo_syslog_pid(),
                         logData["User"],
                         logData["IP"],
-                        random.randrange(1021, 9999, 123),
+                        _demo_syslog_port(),
                         logData["Date Time"],
                         logData["Server_Name"],
                     )
@@ -38,7 +64,7 @@ class ReadCSVFiles:
                     "sshd[%d]: pam_unix(sshd:auth): authentication failure; login= uid=0 "
                     "euid=0 tty=ssh ruser= rhost=%s user=%s DATE_TIME %s HOST %s"
                     % (
-                        random.randrange(1000, 9999, 345),
+                        _demo_syslog_pid(),
                         logData["IP"],
                         logData["User"],
                         logData["Date Time"],
@@ -50,10 +76,10 @@ class ReadCSVFiles:
                 sys_log_message = (
                     "sshd[%d]: Accepted publickey for %s from %s port %d ssh2"
                     % (
-                        random.randrange(1000, 9999, 345),
+                        _demo_syslog_pid(),
                         logData["User"],
                         logData["IP"],
-                        random.randrange(1021, 9999, 123),
+                        _demo_syslog_port(),
                     )
                 )
             else:
@@ -61,7 +87,7 @@ class ReadCSVFiles:
                     "sshd[%d]: pam_unix(sshd:auth): authentication failure; login= uid=0 "
                     "euid=0 tty=ssh ruser= rhost=%s user=%s"
                     % (
-                        random.randrange(1000, 9999, 345),
+                        _demo_syslog_pid(),
                         logData["IP"],
                         logData["User"],
                     )
@@ -108,7 +134,8 @@ def main() -> None:
     handler = logging.handlers.SysLogHandler(address=(ip_address, 10514))
     logger.addHandler(handler)
 
-    with open(file_name, encoding="utf-8", newline="") as file_object:
+    csv_path = resolve_csv_input_path(file_name)
+    with open(csv_path, encoding="utf-8", newline="") as file_object:
         reader = csv.reader(file_object)
         read_csv.readLineGenerateLogs(reader)
 
