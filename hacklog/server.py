@@ -16,7 +16,6 @@ from syslog_server import DEFAULT_QUEUE_MAXSIZE, run_async_syslog_server
 
 logger = get_logger("server")
 
-
 class SyslogServer:
     """Syslog server orchestrating config, parsing, and asyncio UDP ingestion."""
 
@@ -109,11 +108,9 @@ class SyslogServer:
         self.scoring_engine = ScoringEngine(update_service, alert_service)
         self.run()
 
-
 def main() -> None:
     server = SyslogServer()
     server.start()
-
 
 if __name__ == "__main__":
     main()

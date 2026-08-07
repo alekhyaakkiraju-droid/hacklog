@@ -1,7 +1,5 @@
 """Unit tests for hacklog.metrics."""
 
-from __future__ import annotations
-
 import re
 import urllib.error
 import urllib.request
@@ -25,13 +23,11 @@ from hacklog.metrics import (
     start_metrics_server,
 )
 
-
 @pytest.fixture(autouse=True)
 def reset_metrics_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("HACKLOG_METRICS_ENABLED", raising=False)
     monkeypatch.delenv("HACKLOG_METRICS_PORT", raising=False)
     reset_metrics_server_state_for_testing()
-
 
 def test_metric_objects_are_defined() -> None:
     metrics = get_metric_objects()
@@ -45,7 +41,6 @@ def test_metric_objects_are_defined() -> None:
         "queue_depth",
         "db_operation_duration_seconds",
     }
-
 
 def test_metrics_can_be_incremented_and_observed() -> None:
     messages_received_total.inc()
@@ -73,7 +68,6 @@ def test_metrics_can_be_incremented_and_observed() -> None:
     assert 'operation="save"' in output
     assert "db_operation_duration_seconds_bucket" in output
 
-
 def test_render_metrics_returns_prometheus_exposition_format() -> None:
     messages_received_total.inc(3)
     output = render_metrics().decode("utf-8")
@@ -82,18 +76,15 @@ def test_render_metrics_returns_prometheus_exposition_format() -> None:
     assert re.search(r"^# TYPE messages_received_total counter", output, re.MULTILINE)
     assert re.search(r"^messages_received_total ", output, re.MULTILINE)
 
-
 def test_metrics_server_disabled_by_default() -> None:
     assert metrics_enabled() is False
     assert start_metrics_server(port=find_available_port()) is None
-
 
 def test_metrics_server_can_be_disabled_via_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("HACKLOG_METRICS_ENABLED", "false")
     assert start_metrics_server(port=find_available_port(), enabled=None) is None
-
 
 def test_metrics_endpoint_returns_prometheus_text(
     monkeypatch: pytest.MonkeyPatch,
@@ -118,7 +109,6 @@ def test_metrics_endpoint_returns_prometheus_text(
     assert "queue_depth" in body
     assert re.search(r"^# HELP ", body, re.MULTILINE)
     assert re.search(r"^# TYPE ", body, re.MULTILINE)
-
 
 def test_metrics_endpoint_not_available_when_disabled(
     monkeypatch: pytest.MonkeyPatch,

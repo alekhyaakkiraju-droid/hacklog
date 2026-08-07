@@ -10,7 +10,6 @@ try:
 except ImportError:
     from validators import validate_parsed_fields
 
-
 class Parser:
     def __init__(
         self,

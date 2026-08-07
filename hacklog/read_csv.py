@@ -13,16 +13,13 @@ from server import SyslogServer
 
 logger = logging.getLogger()
 
-
 def _demo_syslog_pid() -> int:
     """Synthetic syslog PID for CSV replay — not used for security purposes."""
     return random.randrange(1000, 9999, 345)  # NOSONAR
 
-
 def _demo_syslog_port() -> int:
     """Synthetic syslog port for CSV replay — not used for security purposes."""
     return random.randrange(1021, 9999, 123)  # NOSONAR
-
 
 def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path:
     """Resolve a CSV path and reject traversal outside the base directory."""
@@ -37,7 +34,6 @@ def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path
     if not resolved.is_file():
         raise FileNotFoundError(f"CSV file not found: {resolved}")
     return resolved
-
 
 class ReadCSVFiles:
     def __init__(self, test_enabled: bool = False) -> None:
@@ -114,7 +110,6 @@ class ReadCSVFiles:
                 self.log_messages(each_row_data)
             row_num += 1
 
-
 def main() -> None:
     server = SyslogServer()
     server.parse_config("../conf/server.conf")
@@ -140,7 +135,6 @@ def main() -> None:
     with open(csv_path, encoding="utf-8", newline="") as file_object:
         reader = csv.reader(file_object)
         read_csv.read_line_generate_logs(reader)
-
 
 if __name__ == "__main__":
     main()

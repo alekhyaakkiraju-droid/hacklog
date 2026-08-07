@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 logger = get_logger("services")
 
-
 class HourRangeEnum:
     EARLY = range(4)
     DAWN = range(4, 8)
@@ -18,7 +17,6 @@ class HourRangeEnum:
     AFTERNOON = range(12, 16)
     EVE = range(16, 20)
     NIGHT = range(20, 24)
-
 
 class UpdateService:
     def __init__(

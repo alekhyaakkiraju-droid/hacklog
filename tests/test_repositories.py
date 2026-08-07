@@ -1,7 +1,5 @@
 """Tests for repository pattern data access layer."""
 
-from __future__ import annotations
-
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +29,6 @@ from repositories import (  # noqa: E402
     UserRepository,
 )
 
-
 @pytest.fixture
 def session_factory(tmp_path: Path):
     engine = create_engine(f"sqlite:///{tmp_path / 'repos.db'}")
@@ -42,21 +39,17 @@ def session_factory(tmp_path: Path):
     yield factory
     engine.dispose()
 
-
 @pytest.fixture
 def profile_repository(session_factory) -> ProfileRepository:
     return ProfileRepository(session_factory)
-
 
 @pytest.fixture
 def user_repository(session_factory) -> UserRepository:
     return UserRepository(session_factory)
 
-
 @pytest.fixture
 def audit_repository(session_factory) -> AuditRepository:
     return AuditRepository(session_factory)
-
 
 @pytest.mark.parametrize(
     ("entity_cls", "username"),
@@ -80,7 +73,6 @@ def test_profile_repository_crud(entity_cls, username, profile_repository) -> No
     assert reloaded is not None
     assert reloaded.profile["Mon"] == 2
 
-
 def test_user_repository_crud(user_repository) -> None:
     user = User("repo-user", datetime(2026, 2, 1), 10)
     user_repository.save(user)
@@ -94,14 +86,12 @@ def test_user_repository_crud(user_repository) -> None:
     assert final.score == 42
     assert final.scare_count == 0
 
-
 def test_audit_repository_append_only(audit_repository, session_factory) -> None:
     event = EventLog(datetime(2026, 3, 1), "audit-user", "10.0.0.1", True, "host")
     audit_repository.save_event(event)
     with session_factory() as session:
         count = session.execute(select(EventLog)).scalars().all()
     assert len(count) == 1
-
 
 def test_transaction_rolls_back_on_failure(profile_repository, session_factory) -> None:
     profile = Days(datetime(2026, 4, 1), "rollback-user", {"Mon": 1}, 1)
@@ -123,7 +113,6 @@ def test_transaction_rolls_back_on_failure(profile_repository, session_factory) 
 
     assert profile_repository.get_profile(Hours, "rollback-user") is None
     assert profile_repository.get_profile(Days, "rollback-user") is not None
-
 
 def test_repositories_use_injected_session_factory(session_factory) -> None:
     repo = ProfileRepository(session_factory)

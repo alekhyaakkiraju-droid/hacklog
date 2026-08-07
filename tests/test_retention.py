@@ -1,7 +1,5 @@
 """Tests for DataRetentionService: purge logic, audit records, and scheduling."""
 
-from __future__ import annotations
-
 import asyncio
 import sys
 from datetime import datetime, timedelta
@@ -30,21 +28,17 @@ from entities import (  # noqa: E402
 from repositories import AuditRepository  # noqa: E402
 from retention import DataRetentionService  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 
 def _ago(days: int) -> datetime:
     """Return a naive UTC datetime that is `days` days in the past."""
     return datetime.utcnow() - timedelta(days=days)
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def session_factory(tmp_path: Path):
@@ -56,11 +50,9 @@ def session_factory(tmp_path: Path):
     yield factory
     engine.dispose()
 
-
 @pytest.fixture
 def audit_repository(session_factory) -> AuditRepository:
     return AuditRepository(session_factory)
-
 
 @pytest.fixture
 def retention_service(session_factory, audit_repository) -> DataRetentionService:
@@ -73,13 +65,11 @@ def retention_service(session_factory, audit_repository) -> DataRetentionService
         purge_schedule_hour=2,
     )
 
-
 def _add_event(session_factory, username: str, days_ago: int) -> None:
     date = _ago(days_ago)
     with session_factory() as session:
         session.add(EventLog(date, username, "10.0.0.1", True, "host"))
         session.commit()
-
 
 def _add_user(session_factory, username: str, days_ago: int) -> None:
     date = _ago(days_ago)
@@ -88,28 +78,23 @@ def _add_user(session_factory, username: str, days_ago: int) -> None:
         session.add(user)
         session.commit()
 
-
 def _add_profile(session_factory, entity_cls, username: str, days_ago: int) -> None:
     date = _ago(days_ago)
     with session_factory() as session:
         session.add(entity_cls(date, username, {"Mon": 1}, 1))
         session.commit()
 
-
 def _count(session_factory, entity_cls) -> int:
     with session_factory() as session:
         return len(session.execute(select(entity_cls)).scalars().all())
-
 
 def _usernames(session_factory, entity_cls) -> set[str]:
     with session_factory() as session:
         return {r.username for r in session.execute(select(entity_cls)).scalars().all()}
 
-
 # ---------------------------------------------------------------------------
 # Event log purge tests
 # ---------------------------------------------------------------------------
-
 
 def test_event_logs_beyond_retention_are_deleted(
     session_factory, retention_service
@@ -123,7 +108,6 @@ def test_event_logs_beyond_retention_are_deleted(
     assert _count(session_factory, EventLog) == 1
     assert _usernames(session_factory, EventLog) == {"new-user"}
 
-
 def test_event_logs_within_retention_are_preserved(
     session_factory, retention_service
 ) -> None:
@@ -133,7 +117,6 @@ def test_event_logs_within_retention_are_preserved(
 
     assert deleted == 0
     assert _count(session_factory, EventLog) == 1
-
 
 def test_purge_event_logs_boundary(session_factory, retention_service) -> None:
     """Record exactly at the boundary (30 days old) is preserved (cutoff is strict <)."""
@@ -145,7 +128,6 @@ def test_purge_event_logs_boundary(session_factory, retention_service) -> None:
     assert deleted == 1
     assert _usernames(session_factory, EventLog) == {"boundary-user"}
 
-
 def test_purge_event_logs_is_idempotent(session_factory, retention_service) -> None:
     _add_event(session_factory, "idem-user", 50)
 
@@ -154,7 +136,6 @@ def test_purge_event_logs_is_idempotent(session_factory, retention_service) -> N
 
     assert first == 1
     assert second == 0
-
 
 def test_purge_event_logs_batch_processing(session_factory, audit_repository) -> None:
     """Verify batch_size=3 correctly handles more records than one batch."""
@@ -176,11 +157,9 @@ def test_purge_event_logs_batch_processing(session_factory, audit_repository) ->
     assert deleted == 7
     assert _count(session_factory, EventLog) == 2
 
-
 # ---------------------------------------------------------------------------
 # Profile purge tests
 # ---------------------------------------------------------------------------
-
 
 def test_inactive_profiles_are_purged(session_factory, retention_service) -> None:
     """All records for an inactive user are removed across every profile table."""
@@ -201,7 +180,6 @@ def test_inactive_profiles_are_purged(session_factory, retention_service) -> Non
     assert _count(session_factory, Server) == 0
     assert _count(session_factory, IpAddress) == 0
 
-
 def test_active_profiles_are_preserved(session_factory, retention_service) -> None:
     username = "active-user"
     _add_user(session_factory, username, 5)
@@ -213,7 +191,6 @@ def test_active_profiles_are_preserved(session_factory, retention_service) -> No
     assert purged == 0
     assert _count(session_factory, User) == 1
     assert _count(session_factory, Days) == 1
-
 
 def test_profile_inactivity_uses_most_recent_activity(
     session_factory, retention_service
@@ -229,7 +206,6 @@ def test_profile_inactivity_uses_most_recent_activity(
     assert purged == 0
     assert _count(session_factory, User) == 1
 
-
 def test_purge_inactive_profiles_is_idempotent(
     session_factory, retention_service
 ) -> None:
@@ -242,11 +218,9 @@ def test_purge_inactive_profiles_is_idempotent(
     assert first == 1
     assert second == 0
 
-
 # ---------------------------------------------------------------------------
 # Audit record tests
 # ---------------------------------------------------------------------------
-
 
 def test_purge_event_logs_creates_audit_record(
     session_factory, retention_service
@@ -267,7 +241,6 @@ def test_purge_event_logs_creates_audit_record(
     assert rec.details["records_deleted"] == 1
     assert rec.details["retention_days"] == 30
 
-
 def test_purge_inactive_profiles_creates_audit_record(
     session_factory, retention_service
 ) -> None:
@@ -286,7 +259,6 @@ def test_purge_inactive_profiles_creates_audit_record(
     assert rec.details["users_purged"] == 1
     assert rec.details["inactivity_days"] == 90
 
-
 def test_purge_without_audit_repository_does_not_raise(session_factory) -> None:
     service = DataRetentionService(
         session_factory,
@@ -298,11 +270,9 @@ def test_purge_without_audit_repository_does_not_raise(session_factory) -> None:
     deleted = service.purge_event_logs()
     assert deleted == 1
 
-
 # ---------------------------------------------------------------------------
 # System integration test: mixed timestamps
 # ---------------------------------------------------------------------------
-
 
 def test_run_purge_full_pipeline(session_factory, retention_service) -> None:
     """End-to-end: create records spanning the retention boundary, run purge."""
@@ -351,11 +321,9 @@ def test_run_purge_full_pipeline(session_factory, retention_service) -> None:
     assert len(ev_audit) == 1
     assert len(prof_audit) == 1
 
-
 # ---------------------------------------------------------------------------
 # Config tests
 # ---------------------------------------------------------------------------
-
 
 def test_retention_config_defaults() -> None:
     from config import RetentionConfig
@@ -365,7 +333,6 @@ def test_retention_config_defaults() -> None:
     assert cfg.purge_schedule_hour == 2
     assert cfg.purge_batch_size == 1000
 
-
 def test_retention_config_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACKLOG_EVENT_RETENTION_DAYS", "90")
     monkeypatch.setenv("HACKLOG_PROFILE_INACTIVITY_DAYS", "60")
@@ -374,7 +341,6 @@ def test_retention_config_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _RetentionSettings()
     assert settings.event_retention_days == 90
     assert settings.profile_inactivity_days == 60
-
 
 def test_config_manager_has_retention(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in ("HACKLOG_SMTP_USER", "HACKLOG_SMTP_PASSWORD", "HACKLOG_SMTP_SENDER",
@@ -392,11 +358,9 @@ def test_config_manager_has_retention(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.retention.event_retention_days == 180
     assert cfg.retention.profile_inactivity_days == 180  # default
 
-
 # ---------------------------------------------------------------------------
 # Async scheduler smoke test
 # ---------------------------------------------------------------------------
-
 
 @pytest.mark.asyncio
 async def test_schedule_daily_purge_sleeps_until_next_run(

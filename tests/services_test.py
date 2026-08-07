@@ -33,7 +33,6 @@ _smtp_config = SmtpConfig(
 email_service = AlertService(_smtp_config)
 update_service = UpdateService()
 
-
 class ServiceTests(unittest.TestCase):
     def setUp(self):
         self._event_log = EventLog(datetime.now(), "nrhine", "1.2.3.4", True, "prod")
@@ -102,10 +101,8 @@ class ServiceTests(unittest.TestCase):
         user = update_service.fetch_user(self._event_log)
         self.assertIsInstance(user, User)
 
-
 def main():
     unittest.main()
-
 
 if __name__ == "__main__":
     main()

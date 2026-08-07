@@ -1,7 +1,5 @@
 """Data retention service with configurable purge of old event logs and profiles."""
 
-from __future__ import annotations
-
 import asyncio
 import time
 from collections.abc import Callable
@@ -39,7 +37,6 @@ except ImportError:
 logger = get_logger("retention")
 
 _PROFILE_TABLES = (Days, Hours, Server, IpAddress)
-
 
 class DataRetentionService:
     """Purge old event logs and inactive user profiles on a configurable schedule."""

@@ -14,8 +14,6 @@ Revises:
 Create Date: 2026-08-07
 """
 
-from __future__ import annotations
-
 import json
 import pickle
 import shutil
@@ -33,7 +31,6 @@ depends_on = None
 
 PROFILE_TABLES = ("days", "hours", "servers", "ipAddress")
 
-
 def _sqlite_path_from_url(url: str) -> Path | None:
     parsed = urlparse(url)
     if parsed.scheme != "sqlite":
@@ -45,7 +42,6 @@ def _sqlite_path_from_url(url: str) -> Path | None:
         return Path(database)
     return Path(database)
 
-
 def _backup_sqlite_database(connection: sa.Connection) -> Path | None:
     db_path = _sqlite_path_from_url(str(connection.engine.url))
     if db_path is None:
@@ -53,7 +49,6 @@ def _backup_sqlite_database(connection: sa.Connection) -> Path | None:
     backup_path = db_path.with_suffix(db_path.suffix + ".pre-migration.bak")
     shutil.copy2(db_path, backup_path)
     return backup_path
-
 
 def _deserialize_pickle_profile(raw: Any) -> dict[str, Any]:
     if raw is None:
@@ -71,7 +66,6 @@ def _deserialize_pickle_profile(raw: Any) -> dict[str, Any]:
     if not isinstance(loaded, dict):
         raise TypeError(f"Expected profile dict, got {type(loaded)!r}")
     return loaded
-
 
 def _snapshot_profiles(connection: sa.Connection) -> dict[str, list[dict[str, Any]]]:
     snapshots: dict[str, list[dict[str, Any]]] = {}
@@ -92,7 +86,6 @@ def _snapshot_profiles(connection: sa.Connection) -> dict[str, list[dict[str, An
         ]
     return snapshots
 
-
 def _alter_profile_column_to_json(table: str) -> None:
     with op.batch_alter_table(table) as batch_op:
         batch_op.alter_column(
@@ -101,7 +94,6 @@ def _alter_profile_column_to_json(table: str) -> None:
             type_=sa.JSON(),
             existing_nullable=True,
         )
-
 
 def _write_json_profiles(
     connection: sa.Connection, snapshots: dict[str, list[dict[str, Any]]]
@@ -121,7 +113,6 @@ def _write_json_profiles(
                 },
             )
 
-
 def upgrade() -> None:
     bind = op.get_bind()
     _backup_sqlite_database(bind)
@@ -132,7 +123,6 @@ def upgrade() -> None:
 
     _write_json_profiles(bind, snapshots)
 
-
 def _alter_profile_column_to_pickle(table: str) -> None:
     with op.batch_alter_table(table) as batch_op:
         batch_op.alter_column(
@@ -142,7 +132,6 @@ def _alter_profile_column_to_pickle(table: str) -> None:
             existing_nullable=True,
         )
 
-
 def _serialize_profile_to_pickle(profile: Any) -> bytes:
     if profile is None:
         return pickle.dumps({})
@@ -151,7 +140,6 @@ def _serialize_profile_to_pickle(profile: Any) -> bytes:
     if isinstance(profile, str):
         profile = json.loads(profile)
     return pickle.dumps(profile)
-
 
 def downgrade() -> None:
     bind = op.get_bind()

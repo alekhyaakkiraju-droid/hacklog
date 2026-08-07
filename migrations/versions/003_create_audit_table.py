@@ -5,8 +5,6 @@ Revises: 002_rename_servers
 Create Date: 2026-08-07
 """
 
-from __future__ import annotations
-
 import sqlalchemy as sa
 from alembic import op
 
@@ -14,7 +12,6 @@ revision = "003_create_audit"
 down_revision = "002_rename_servers"
 branch_labels = None
 depends_on = None
-
 
 def upgrade() -> None:
     op.create_table(
@@ -35,7 +32,6 @@ def upgrade() -> None:
         ["timestamp"],
         unique=False,
     )
-
 
 def downgrade() -> None:
     op.drop_index("ix_audit_records_timestamp", table_name="audit_records")

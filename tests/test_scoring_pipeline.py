@@ -1,7 +1,5 @@
 """Integration test: syslog parse → score pipeline with injected dependencies."""
 
-from __future__ import annotations
-
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -16,7 +14,6 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 from entities import EventLog, SyslogMsg, User  # noqa: E402
 from parse import Parser  # noqa: E402
 from scoring import ScoringEngine  # noqa: E402
-
 
 def test_pipeline_parse_to_score_with_injected_mocks() -> None:
     syslog_line = (

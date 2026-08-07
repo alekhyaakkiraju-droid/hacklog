@@ -1,7 +1,5 @@
 """Repository layer for hacklog data access."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -17,7 +15,6 @@ logger = get_logger("repositories")
 ProfileEntity = Days | Hours | Server | IpAddress
 ProfileEntityType = type[Days] | type[Hours] | type[Server] | type[IpAddress]
 T = TypeVar("T")
-
 
 class BaseRepository:
     """Base repository with injected session factory and transaction helpers."""
@@ -44,7 +41,6 @@ class BaseRepository:
             except Exception:
                 session.rollback()
                 raise
-
 
 class ProfileRepository(BaseRepository):
     """Parameterized CRUD for Days, Hours, Server, and IpAddress profiles."""
@@ -78,7 +74,6 @@ class ProfileRepository(BaseRepository):
                 profile_type=type(profile).__name__,
                 username=profile.username,
             )
-
 
 class UserRepository(BaseRepository):
     """User entity persistence."""
@@ -123,7 +118,6 @@ class UserRepository(BaseRepository):
         with self._session_scope() as session:
             session.merge(user)
             session.commit()
-
 
 class AuditRepository(BaseRepository):
     """Append-only event log and audit record persistence."""

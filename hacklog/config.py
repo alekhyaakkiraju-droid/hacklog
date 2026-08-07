@@ -1,7 +1,5 @@
 """Centralized configuration management for hacklog."""
 
-from __future__ import annotations
-
 import os
 from pathlib import Path
 from typing import Any
@@ -10,7 +8,6 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic.types import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 class SyslogConfig(BaseModel):
     """UDP syslog listener settings."""
@@ -40,7 +37,6 @@ class SyslogConfig(BaseModel):
         ge=1,
         description="Maximum syslog messages accepted per source IP per second.",
     )
-
 
 class SmtpConfig(BaseSettings):
     """SMTP alert delivery settings loaded from environment variables."""
@@ -90,7 +86,6 @@ class SmtpConfig(BaseSettings):
         if not value.get_secret_value().strip():
             raise ValueError("HACKLOG_SMTP_PASSWORD environment variable is required")
         return value
-
 
 class ScoringConfig(BaseModel):
     """Scoring engine weights and alert thresholds."""
@@ -204,7 +199,6 @@ class ScoringConfig(BaseModel):
         ),
     )
 
-
 class RetentionConfig(BaseModel):
     """Data retention and automated purge settings."""
 
@@ -239,7 +233,6 @@ class RetentionConfig(BaseModel):
         description="Number of records to delete per batch to avoid long transactions. Default: 1000",
     )
 
-
 class DatabaseConfig(BaseModel):
     """Database connection settings."""
 
@@ -254,7 +247,6 @@ class DatabaseConfig(BaseModel):
         description="SQLAlchemy connection pool size.",
     )
 
-
 class SecurityConfig(BaseModel):
     """Security boundary settings."""
 
@@ -262,7 +254,6 @@ class SecurityConfig(BaseModel):
         default_factory=lambda: ["0.0.0.0/0"],
         description="CIDR blocks permitted to originate syslog traffic.",
     )
-
 
 class _ScoringSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HACKLOG_SCORING_", extra="ignore")
@@ -280,7 +271,6 @@ class _ScoringSettings(BaseSettings):
     scare_count_limit: int | None = None
     scare_date_expire_days: int | None = None
 
-
 class _SyslogSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HACKLOG_SYSLOG_", extra="ignore")
 
@@ -290,19 +280,16 @@ class _SyslogSettings(BaseSettings):
     allowed_cidrs: list[str] | None = None
     rate_limit_per_source: int | None = None
 
-
 class _DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HACKLOG_DATABASE_", extra="ignore")
 
     db_url: str | None = None
     pool_size: int | None = None
 
-
 class _SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HACKLOG_SECURITY_", extra="ignore")
 
     allowed_source_cidrs: list[str] | None = None
-
 
 class _RetentionSettings(BaseSettings):
     """Reads retention env vars using HACKLOG_ prefix."""
@@ -313,7 +300,6 @@ class _RetentionSettings(BaseSettings):
     profile_inactivity_days: int | None = None
     purge_schedule_hour: int | None = None
     purge_batch_size: int | None = None
-
 
 class ConfigManager:
     """Validated hacklog configuration assembled from YAML and environment variables."""
@@ -334,7 +320,6 @@ class ConfigManager:
         self.security = security
         self.retention = retention or RetentionConfig()
 
-
 def _load_yaml(path: Path | None) -> dict[str, Any]:
     if path is None or not path.is_file():
         return {}
@@ -348,14 +333,12 @@ def _load_yaml(path: Path | None) -> dict[str, Any]:
         )
     return data
 
-
 def _merge_non_null(base: BaseModel, overrides: dict[str, Any]) -> BaseModel:
     merged = base.model_dump()
     for key, value in overrides.items():
         if value is not None:
             merged[key] = value
     return base.model_validate(merged)
-
 
 def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
     """Load and validate hacklog configuration.
@@ -409,11 +392,9 @@ def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
         retention=retention,
     )
 
-
 REQUIRED_SMTP_PASSWORD_MESSAGE = (
     "HACKLOG_SMTP_PASSWORD environment variable is required"
 )
-
 
 def _validation_error_is_missing_smtp_password(exc: ValidationError) -> bool:
     for error in exc.errors():
@@ -428,7 +409,6 @@ def _validation_error_is_missing_smtp_password(exc: ValidationError) -> bool:
         ):
             return True
     return False
-
 
 def load_config_or_exit(yaml_path: str | Path | None = None) -> ConfigManager:
     """Load configuration and exit with an actionable message when SMTP secrets are missing."""

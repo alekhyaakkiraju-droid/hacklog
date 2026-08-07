@@ -1,7 +1,5 @@
 """Integration tests for Alembic pickle-to-JSON migration."""
 
-from __future__ import annotations
-
 import json
 import pickle
 from datetime import datetime
@@ -40,7 +38,6 @@ MIGRATED_TABLE_NAMES = {
     "servers": "server",
     "ipAddress": "ipAddress",
 }
-
 
 def _create_legacy_pickle_database(db_path: Path) -> dict[str, dict[str, dict]]:
     engine = create_engine(f"sqlite:///{db_path}")
@@ -81,7 +78,6 @@ def _create_legacy_pickle_database(db_path: Path) -> dict[str, dict[str, dict]]:
     engine.dispose()
     return expected
 
-
 def _run_migration(db_path: Path, repo_root: Path) -> Path:
     backup_path = db_path.with_suffix(db_path.suffix + ".pre-migration.bak")
     alembic_cfg = Config(str(repo_root / "alembic.ini"))
@@ -90,7 +86,6 @@ def _run_migration(db_path: Path, repo_root: Path) -> Path:
     command.upgrade(alembic_cfg, "head")
     assert backup_path.exists(), "pre-migration backup was not created"
     return backup_path
-
 
 def _load_migrated_profiles(db_path: Path) -> dict[str, dict]:
     engine = create_engine(f"sqlite:///{db_path}")
@@ -116,7 +111,6 @@ def _load_migrated_profiles(db_path: Path) -> dict[str, dict]:
     engine.dispose()
     return migrated
 
-
 def test_migration_converts_pickle_profiles_to_json(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     db_path = tmp_path / "legacy.db"
@@ -128,7 +122,6 @@ def test_migration_converts_pickle_profiles_to_json(tmp_path: Path) -> None:
     for table_name, fixture in expected.items():
         assert migrated[table_name]["username"] == fixture["username"]
         assert migrated[table_name]["profile"] == fixture["profile"]
-
 
 def test_migration_downgrade_is_best_effort_round_trip(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
