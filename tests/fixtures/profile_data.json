@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "description": "Representative profile dictionaries for data access layer golden tests",
+  "profiles": {
+    "days": [
+      {"Mon": 5, "Tue": 3},
+      {"Wed": 1},
+      {}
+    ],
+    "hours": [
+      {"morning": 10, "afternoon": 2, "night": 7},
+      {"early": 0},
+      {}
+    ],
+    "servers": [
+      {"ae1-app80-prd": 12, "db-staging-02": 4},
+      {"web-prod-01": 1},
+      {}
+    ],
+    "ipAddress": [
+      {"10.42.10.2": 8, "10.42.28.46": 3},
+      {"192.168.1.50": 2},
+      {}
+    ]
+  },
+  "users": [
+    {"username": "nrhine", "score": 10},
+    {"username": "jsmith", "score": 42},
+    {"username": "mchen", "score": 0}
+  ],
+  "event_logs": [
+    {
+      "date": "2015-06-15T14:30:00",
+      "username": "nrhine",
+      "ipAddress": "10.42.10.2",
+      "success": true,
+      "server": "ae1-app80-prd"
+    },
+    {
+      "date": "2015-06-15T15:00:00",
+      "username": "jsmith",
+      "ipAddress": "8.8.8.8",
+      "success": false,
+      "server": "web-prod-01"
+    }
+  ]
+}
