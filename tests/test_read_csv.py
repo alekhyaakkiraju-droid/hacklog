@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime
 
 import pytest
 
 from hacklog.read_csv import (
+    CSV_DATETIME_FORMAT_ENV,
     ReadCSVFiles,
     format_syslog_datetime,
+    get_csv_datetime_format,
     parse_csv_datetime,
     resolve_csv_input_path,
 )
@@ -33,6 +37,30 @@ def test_parse_csv_datetime_valid() -> None:
 def test_parse_csv_datetime_invalid_raises(raw_value: str) -> None:
     with pytest.raises(ValueError, match="Invalid Date Time"):
         parse_csv_datetime(raw_value)
+
+
+def test_parse_csv_datetime_none_logs_and_raises(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("ERROR")
+    with pytest.raises(ValueError, match="value cannot be None"):
+        parse_csv_datetime(None)
+    assert any("value cannot be None" in record.message for record in caplog.records)
+
+
+def test_get_csv_datetime_format_reads_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(CSV_DATETIME_FORMAT_ENV, "%Y/%m/%d %H:%M:%S")
+    assert get_csv_datetime_format() == "%Y/%m/%d %H:%M:%S"
+
+
+def test_parse_csv_datetime_honors_env_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(CSV_DATETIME_FORMAT_ENV, "%Y/%m/%d %H:%M:%S")
+    parsed = parse_csv_datetime("2013/09/23 11:16:48")
+    assert parsed == datetime(2013, 9, 23, 11, 16, 48)
 
 
 def test_format_syslog_datetime_matches_parser_expectation() -> None:
@@ -103,3 +131,22 @@ def test_resolve_csv_input_path_rejects_traversal(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="CSV path must stay within"):
         resolve_csv_input_path("../outside.csv", base_dir=tmp_path)
+
+
+def test_read_line_generate_logs_skips_invalid_rows(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("INFO")
+    reader = ReadCSVFiles(test_enabled=True)
+    csv_buffer = io.StringIO(
+        "Date Time,User,IP,Login_Status,Server_Name\n"
+        "bad-date,alice,10.0.0.1,True,srv-01\n"
+        "2013-09-23 11:16:48,bob,10.0.0.2,True,srv-02\n"
+    )
+    reader.read_line_generate_logs(csv.reader(csv_buffer))
+
+    info_messages = [record.message for record in caplog.records if record.levelname == "INFO"]
+    error_messages = [record.message for record in caplog.records if record.levelname == "ERROR"]
+    assert len(info_messages) == 1
+    assert "Accepted publickey for bob" in info_messages[0]
+    assert any("Skipping CSV row 2" in message for message in error_messages)
