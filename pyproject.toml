@@ -28,6 +28,7 @@ dependencies = [
   "structlog",
   "pyyaml>=6.0",
   "prometheus-client>=0.20",
+  "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

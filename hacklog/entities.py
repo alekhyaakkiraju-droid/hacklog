@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import date, datetime
@@ -6,6 +7,7 @@ from session import Session
 
 db = None
 Base = declarative_base()
+MutableProfile = MutableDict.as_mutable(JSON)
 
 def enum(**enums):
 	return type('Enum', (), enums)
@@ -55,7 +57,7 @@ class Days(Base):
 
 	date = Column('date', DateTime, primary_key=True)
 	username = Column('username', String, primary_key=True)
-	profile = Column('profile', PickleType)
+	profile = Column('profile', MutableProfile)
 	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
@@ -69,7 +71,7 @@ class Hours(Base):
 
 	date = Column('date', DateTime, primary_key=True)
 	username = Column('username', String, primary_key=True)
-	profile = Column('profile', PickleType)
+	profile = Column('profile', MutableProfile)
 	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
@@ -83,7 +85,7 @@ class Servers(Base):
 
 	date = Column('date', DateTime, primary_key=True)
 	username = Column('username', String, primary_key=True)
-	profile = Column('profile', PickleType)
+	profile = Column('profile', MutableProfile)
 	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
@@ -97,7 +99,7 @@ class IpAddress(Base):
 
 	date = Column('date', DateTime, primary_key=True)
 	username = Column('username', String, primary_key=True)
-	profile = Column('profile', PickleType)
+	profile = Column('profile', MutableProfile)
 	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):

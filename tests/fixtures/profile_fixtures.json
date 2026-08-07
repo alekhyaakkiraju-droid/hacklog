@@ -1,0 +1,6 @@
+{
+  "days": {"Mon": 5, "Tue": 3, "Wed": 1},
+  "hours": {"09": 12, "14": 8, "22": 2},
+  "servers": {"ldap1": 40, "vpn-gw": 15, "mail": 3},
+  "ipAddress": {"10.0.0.5": 20, "203.0.113.1": 1, "special/key": 2}
+}
