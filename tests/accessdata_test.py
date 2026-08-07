@@ -29,7 +29,6 @@ hours_dao = HoursDao()
 server_dao = ServerDao()
 ip_address_dao = IpAddressDao()
 
-
 class AccessDataTests(unittest.TestCase):
     def setUp(self):
         self._user = User("nrhine", datetime.today(), 10)
@@ -83,10 +82,8 @@ class AccessDataTests(unittest.TestCase):
         self.assertIsInstance(merged, User)
         self.assertEqual(merged.score, 99)
 
-
 def main():
     unittest.main()
-
 
 if __name__ == "__main__":
     main()

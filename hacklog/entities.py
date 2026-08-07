@@ -9,13 +9,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase
 
-
 class Base(DeclarativeBase):
     pass
 
-
 MutableProfile = MutableDict.as_mutable(JSON)
-
 
 class Weight(IntEnum):
     HOURS = 10
@@ -27,23 +24,19 @@ class Weight(IntEnum):
     EXT = 15
     IP = 15
 
-
 class Threshold(IntEnum):
     CRITICAL = 50
     SCARY = 30
     SCARECOUNT = 2
     SCAREDATEEXPIRE = 1
 
-
 def create_db_engine(server: Any) -> Engine:
     """Create and return the SQLAlchemy engine for the configured database file."""
     return create_engine("sqlite:///" + server.db_file)
 
-
 def create_tables(engine: Engine) -> None:
     """Create all entity tables on the given engine."""
     Base.metadata.create_all(engine)
-
 
 class EventLog(Base):
     __tablename__ = "eventLog"
@@ -68,7 +61,6 @@ class EventLog(Base):
         self.success = success
         self.server = server
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -84,7 +76,6 @@ class User(Base):
         self.score = score
         self.scare_count = 0
         self.last_scare_date = date.today()
-
 
 class Days(Base):
     __tablename__ = "days"
@@ -106,7 +97,6 @@ class Days(Base):
         self.profile = profile
         self.total_count = total_count
 
-
 class Hours(Base):
     __tablename__ = "hours"
 
@@ -127,7 +117,6 @@ class Hours(Base):
         self.profile = profile
         self.total_count = total_count
 
-
 class Server(Base):
     __tablename__ = "server"
 
@@ -147,7 +136,6 @@ class Server(Base):
         self.username = username
         self.profile = profile
         self.total_count = total_count
-
 
 class IpAddress(Base):
     __tablename__ = "ipAddress"
@@ -184,14 +172,12 @@ class IpAddress(Base):
             return True
         return False
 
-
 class SyslogMsg:
     def __init__(self, data: str = "", host: str = "", port: int = 0) -> None:
         self.data = data
         self.host = host
         self.port = port
         self.date = datetime.now()
-
 
 class AuditRecord(Base):
     """Append-only audit record for scoring and alerting events."""
@@ -224,7 +210,6 @@ class AuditRecord(Base):
         self.action = action
         self.outcome = outcome
         self.details = details
-
 
 class MailConf:
     def __init__(self, email_test: bool = False) -> None:

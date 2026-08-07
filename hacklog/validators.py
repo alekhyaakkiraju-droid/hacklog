@@ -1,7 +1,5 @@
 """Allow-list validation for parsed syslog fields."""
 
-from __future__ import annotations
-
 import ipaddress
 import re
 from dataclasses import dataclass
@@ -27,7 +25,6 @@ INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ldap_injection", re.compile(r"\*\)|\(\||\*\(\|")),
 )
 
-
 @dataclass(frozen=True)
 class FieldValidationResult:
     """Outcome of validating a single parsed syslog field."""
@@ -36,7 +33,6 @@ class FieldValidationResult:
     field_name: str
     reason: str | None = None
 
-
 def sanitize_for_log(value: str, max_length: int = 128) -> str:
     """Return a log-safe representation of a rejected field value."""
     escaped = value.encode("unicode_escape", errors="backslashreplace").decode("ascii")
@@ -44,17 +40,14 @@ def sanitize_for_log(value: str, max_length: int = 128) -> str:
         return f"{escaped[:max_length]}..."
     return escaped
 
-
 def _has_control_characters(value: str) -> bool:
     return any(ord(character) < 32 for character in value)
-
 
 def _contains_injection_pattern(value: str) -> str | None:
     for reason, pattern in INJECTION_PATTERNS:
         if pattern.search(value):
             return reason
     return None
-
 
 def validate_username(value: str) -> FieldValidationResult:
     if _has_control_characters(value):
@@ -65,7 +58,6 @@ def validate_username(value: str) -> FieldValidationResult:
     if not USERNAME_PATTERN.fullmatch(value):
         return FieldValidationResult(False, "username", "invalid_username")
     return FieldValidationResult(True, "username")
-
 
 def validate_ip_address(value: str) -> FieldValidationResult:
     if _has_control_characters(value):
@@ -79,7 +71,6 @@ def validate_ip_address(value: str) -> FieldValidationResult:
         return FieldValidationResult(False, "ip_address", "invalid_ip_address")
     return FieldValidationResult(True, "ip_address")
 
-
 def validate_hostname(value: str) -> FieldValidationResult:
     if _has_control_characters(value):
         return FieldValidationResult(False, "hostname", "control_characters")
@@ -89,7 +80,6 @@ def validate_hostname(value: str) -> FieldValidationResult:
     if not HOSTNAME_PATTERN.fullmatch(value):
         return FieldValidationResult(False, "hostname", "invalid_hostname")
     return FieldValidationResult(True, "hostname")
-
 
 def validate_parsed_fields(
     username: str,

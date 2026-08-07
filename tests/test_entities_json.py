@@ -1,7 +1,5 @@
 """Unit tests for JSON profile columns on entity models."""
 
-from __future__ import annotations
-
 import json
 import sys
 from datetime import datetime
@@ -19,7 +17,6 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 from entities import Days, Hours, IpAddress, Server, create_tables  # noqa: E402
 from session import Session  # noqa: E402
 
-
 @pytest.fixture
 def json_db_engine(tmp_path: Path):
     db_file = tmp_path / "profiles.db"
@@ -28,7 +25,6 @@ def json_db_engine(tmp_path: Path):
     Session.configure(bind=engine)
     yield engine
     engine.dispose()
-
 
 PROFILE_FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(
@@ -42,7 +38,6 @@ ENTITY_CASES = [
     (Server, "servers"),
     (IpAddress, "ipAddress"),
 ]
-
 
 @pytest.mark.parametrize(("entity_cls", "fixture_key"), ENTITY_CASES)
 def test_profile_round_trips_through_json(
@@ -61,7 +56,6 @@ def test_profile_round_trips_through_json(
         ).scalar_one()
         assert loaded.profile == profile
 
-
 @pytest.mark.parametrize(("entity_cls", "fixture_key"), ENTITY_CASES)
 def test_empty_profile_dict_round_trips(
     json_db_engine,
@@ -78,7 +72,6 @@ def test_empty_profile_dict_round_trips(
             select(entity_cls).where(entity_cls.username == "empty-user")
         ).scalar_one()
         assert loaded.profile == {}
-
 
 def test_days_profile_mon_tue_example(json_db_engine) -> None:
     profile = {"Mon": 5, "Tue": 3}

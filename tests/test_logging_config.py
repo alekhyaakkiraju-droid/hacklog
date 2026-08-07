@@ -1,7 +1,5 @@
 """Unit tests for hacklog.logging_config."""
 
-from __future__ import annotations
-
 import json
 import logging
 
@@ -17,13 +15,11 @@ from hacklog.logging_config import (
     render_event_dict,
 )
 
-
 @pytest.fixture(autouse=True)
 def reset_logging() -> None:
     clear_context()
     logging.getLogger().handlers.clear()
     structlog.reset_defaults()
-
 
 def test_structlog_configuration_produces_valid_json(
     capsys: pytest.CaptureFixture[str],
@@ -41,7 +37,6 @@ def test_structlog_configuration_produces_valid_json(
     assert "timestamp" in payload
     assert payload["level"] == "info"
 
-
 def test_render_event_dict_is_valid_json() -> None:
     output = render_event_dict(
         {
@@ -53,7 +48,6 @@ def test_render_event_dict_is_valid_json() -> None:
     )
     payload = json.loads(output)
     assert payload["component"] == "algorithm"
-
 
 def test_scoring_operation_log_contains_expected_fields(
     capsys: pytest.CaptureFixture[str],
@@ -75,7 +69,6 @@ def test_scoring_operation_log_contains_expected_fields(
     assert payload["username"] == "alice"
     assert payload["source_ip"] == "10.0.0.5"
     assert payload["score"] == 42
-
 
 def test_credentials_are_never_logged(capsys: pytest.CaptureFixture[str]) -> None:
     configure_logging(level=logging.INFO)
@@ -99,7 +92,6 @@ def test_credentials_are_never_logged(capsys: pytest.CaptureFixture[str]) -> Non
     assert payload["password"] == "***REDACTED***"
     assert payload["smtp_password"] == "***REDACTED***"
 
-
 def test_pii_masking_redacts_debug_level_identifiers(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -116,7 +108,6 @@ def test_pii_masking_redacts_debug_level_identifiers(
     payload = parse_json_log_line(capsys.readouterr().out.strip())
     assert payload["username"] != "alice"
     assert payload["source_ip"] != "10.0.0.5"
-
 
 def test_pii_not_masked_for_info_level_alert_logs(
     capsys: pytest.CaptureFixture[str],

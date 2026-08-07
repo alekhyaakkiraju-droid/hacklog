@@ -1,7 +1,5 @@
 """Unit and integration tests for hacklog.security."""
 
-from __future__ import annotations
-
 import socket
 import threading
 import time
@@ -18,7 +16,6 @@ from hacklog.security import (
     parse_allowed_cidrs,
 )
 
-
 @pytest.fixture
 def metered_validator() -> MessageValidator:
     return MessageValidator(
@@ -27,7 +24,6 @@ def metered_validator() -> MessageValidator:
         rate_limiter=RateLimiter(rate_per_second=100, burst_capacity=100),
         meter_and_log=True,
     )
-
 
 def test_rejected_messages_increment_prometheus_counter(
     metered_validator: MessageValidator,
@@ -41,7 +37,6 @@ def test_rejected_messages_increment_prometheus_counter(
     )._value.get()  # noqa: SLF001
     assert after - before == 1.0
 
-
 def test_accepted_messages_increment_received_counter() -> None:
     before = messages_received_total._value.get()  # noqa: SLF001
     validator = MessageValidator(
@@ -54,13 +49,11 @@ def test_accepted_messages_increment_received_counter() -> None:
     after = messages_received_total._value.get()  # noqa: SLF001
     assert after - before == 1.0
 
-
 def test_parse_allowed_cidrs_splits_comma_separated_values() -> None:
     assert parse_allowed_cidrs("10.0.0.0/8, 192.168.0.0/16") == [
         "10.0.0.0/8",
         "192.168.0.0/16",
     ]
-
 
 def test_build_message_validator_reads_env_allowed_cidrs(
     monkeypatch: pytest.MonkeyPatch,
@@ -70,12 +63,10 @@ def test_build_message_validator_reads_env_allowed_cidrs(
     assert validator.validate("192.168.1.10", b"x").accepted is True
     assert validator.validate("10.1.1.1", b"x").accepted is False
 
-
 def test_empty_allowlist_accepts_all_ips() -> None:
     allowlist = IpAllowlist([])
     assert allowlist.is_allowed("10.42.10.2") is True
     assert allowlist.is_allowed("203.0.113.5") is True
-
 
 def test_allowlisted_ip_is_accepted() -> None:
     validator = MessageValidator(
@@ -86,7 +77,6 @@ def test_allowlisted_ip_is_accepted() -> None:
     )
     result = validator.validate("10.42.10.2", b"ok")
     assert result.accepted is True
-
 
 def test_non_allowlisted_ip_is_rejected() -> None:
     validator = MessageValidator(
@@ -99,12 +89,10 @@ def test_non_allowlisted_ip_is_rejected() -> None:
     assert result.accepted is False
     assert result.reason == "ip_rejected"
 
-
 def test_cidr_range_matching() -> None:
     allowlist = IpAllowlist(["10.0.0.0/8"])
     assert allowlist.is_allowed("10.42.10.2") is True
     assert allowlist.is_allowed("11.0.0.1") is False
-
 
 def test_oversized_message_is_rejected() -> None:
     validator = MessageValidator(
@@ -116,7 +104,6 @@ def test_oversized_message_is_rejected() -> None:
     result = validator.validate("10.0.0.1", b"x" * 33)
     assert result.accepted is False
     assert result.reason == "oversized"
-
 
 def test_rate_limited_source_is_rejected_after_burst() -> None:
     validator = MessageValidator(
@@ -131,7 +118,6 @@ def test_rate_limited_source_is_rejected_after_burst() -> None:
     assert result.accepted is False
     assert result.reason == "rate_limited"
 
-
 def test_token_bucket_refills_over_time() -> None:
     bucket = TokenBucket(rate_per_second=10, burst_capacity=1)
     assert bucket.consume() is True
@@ -139,13 +125,11 @@ def test_token_bucket_refills_over_time() -> None:
     time.sleep(0.2)
     assert bucket.consume() is True
 
-
 def test_rate_limiter_isolates_sources() -> None:
     limiter = RateLimiter(rate_per_second=1, burst_capacity=1)
     assert limiter.allow("10.0.0.1") is True
     assert limiter.allow("10.0.0.1") is False
     assert limiter.allow("10.0.0.2") is True
-
 
 def test_udp_integration_accepts_and_rejects_datagrams() -> None:
     validator = MessageValidator(

@@ -1,7 +1,5 @@
 """Unit tests for AlertService, CircuitBreaker, and retry logic."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 import sys
@@ -34,7 +32,6 @@ try:
 except ImportError:
     from config import SmtpConfig
 
-
 class FakeClock:
     def __init__(self, start: float = 0.0) -> None:
         self.current = start
@@ -44,7 +41,6 @@ class FakeClock:
 
     def advance(self, seconds: float) -> None:
         self.current += seconds
-
 
 @pytest.fixture
 def smtp_config() -> SmtpConfig:
@@ -58,28 +54,23 @@ def smtp_config() -> SmtpConfig:
         use_tls=True,
     )
 
-
 @pytest.fixture
 def event_log() -> EventLog:
     return EventLog(
         datetime(2026, 1, 15, 10, 30, 0), "nrhine", "10.0.0.1", False, "prod-host"
     )
 
-
 @pytest.fixture
 def user() -> User:
     return User("nrhine", datetime(2026, 1, 15, 10, 30, 0), 75)
-
 
 @pytest.fixture
 def dead_letter_path(tmp_path: Path) -> Path:
     return tmp_path / "dead_letter.jsonl"
 
-
 @pytest.fixture
 def success_smtp_sender() -> AsyncMock:
     return AsyncMock()
-
 
 @pytest.fixture
 def transient_failure_smtp_sender() -> AsyncMock:
@@ -92,12 +83,10 @@ def transient_failure_smtp_sender() -> AsyncMock:
     )
     return sender
 
-
 @pytest.fixture
 def permanent_failure_smtp_sender() -> AsyncMock:
     sender = AsyncMock(side_effect=SMTPAuthenticationError(535, "invalid credentials"))
     return sender
-
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_closed_to_open_after_five_failures() -> None:
@@ -109,7 +98,6 @@ async def test_circuit_breaker_closed_to_open_after_five_failures() -> None:
     await breaker.record_failure()
     assert breaker.state == CircuitState.OPEN
     assert not await breaker.allow_request()
-
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_open_to_half_open_after_timeout() -> None:
@@ -123,7 +111,6 @@ async def test_circuit_breaker_open_to_half_open_after_timeout() -> None:
     assert await breaker.allow_request()
     assert breaker.state == CircuitState.HALF_OPEN
 
-
 @pytest.mark.asyncio
 async def test_circuit_breaker_half_open_to_closed_on_success() -> None:
     clock = FakeClock()
@@ -134,7 +121,6 @@ async def test_circuit_breaker_half_open_to_closed_on_success() -> None:
     await breaker.record_success()
     assert breaker.state == CircuitState.CLOSED
 
-
 @pytest.mark.asyncio
 async def test_circuit_breaker_half_open_rejects_second_probe() -> None:
     clock = FakeClock()
@@ -143,7 +129,6 @@ async def test_circuit_breaker_half_open_rejects_second_probe() -> None:
     clock.advance(60.0)
     assert await breaker.allow_request()
     assert not await breaker.allow_request()
-
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_half_open_to_open_on_probe_failure() -> None:
@@ -154,7 +139,6 @@ async def test_circuit_breaker_half_open_to_open_on_probe_failure() -> None:
     assert await breaker.allow_request()
     await breaker.record_failure()
     assert breaker.state == CircuitState.OPEN
-
 
 @pytest.mark.asyncio
 async def test_alert_service_retries_transient_failure(
@@ -173,7 +157,6 @@ async def test_alert_service_retries_transient_failure(
     await service.send_alert(user, event_log)
     assert transient_failure_smtp_sender.await_count == 3
     assert not dead_letter_path.exists()
-
 
 @pytest.mark.asyncio
 async def test_alert_service_does_not_retry_permanent_failure(
@@ -196,7 +179,6 @@ async def test_alert_service_does_not_retry_permanent_failure(
     assert payload["username"] == user.username
     assert payload["server"] == event_log.server
 
-
 @pytest.mark.asyncio
 async def test_alert_service_success_logs_and_closes_circuit(
     smtp_config: SmtpConfig,
@@ -213,7 +195,6 @@ async def test_alert_service_success_logs_and_closes_circuit(
     await service.send_alert(user, event_log)
     success_smtp_sender.assert_awaited_once()
     assert breaker.state == CircuitState.CLOSED
-
 
 @pytest.mark.asyncio
 async def test_alert_service_writes_dead_letter_when_circuit_open(
@@ -235,7 +216,6 @@ async def test_alert_service_writes_dead_letter_when_circuit_open(
     payload = json.loads(dead_letter_path.read_text(encoding="utf-8").strip())
     assert payload["reason"] == "circuit_open"
 
-
 def test_build_alert_message_includes_required_fields(
     user: User, event_log: EventLog
 ) -> None:
@@ -251,11 +231,9 @@ def test_build_alert_message_includes_required_fields(
     assert str(user.score) in body
     assert "2026-01-15" in body
 
-
 def test_is_transient_smtp_error_classification() -> None:
     assert is_transient_smtp_error(SMTPConnectError("timeout"))
     assert not is_transient_smtp_error(SMTPAuthenticationError(535, "bad auth"))
-
 
 @pytest.mark.asyncio
 async def test_dead_letter_writer_rotates_when_max_size_exceeded(
@@ -269,7 +247,6 @@ async def test_dead_letter_writer_rotates_when_max_size_exceeded(
     rotated_files = list(tmp_path.glob("dead_letter.*.jsonl"))
     assert len(rotated_files) == 1
 
-
 def test_send_email_alert_sync_wrapper(
     smtp_config: SmtpConfig,
     user: User,
@@ -279,7 +256,6 @@ def test_send_email_alert_sync_wrapper(
     service = AlertService(smtp_config, smtp_sender=sender)
     service.send_email_alert(user, event_log)
     sender.assert_awaited_once()
-
 
 @pytest.mark.asyncio
 async def test_send_email_alert_schedules_task_in_running_loop(

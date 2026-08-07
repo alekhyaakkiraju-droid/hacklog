@@ -7,7 +7,6 @@ from repositories import AuditRepository, ProfileRepository, UserRepository
 from session import Session as SessionFactory
 from sqlalchemy.orm import Session
 
-
 class GenericDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
         factory = session_factory or SessionFactory
@@ -35,14 +34,12 @@ class GenericDao:
                 f"Unsupported entity type for merge: {type(entity).__name__}"
             )
 
-
 class UserDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
         self._user_repository = UserRepository(session_factory or SessionFactory)
 
     def get_user_by_name(self, user: str) -> User | None:
         return self._user_repository.get_by_username(user)
-
 
 class DaysDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
@@ -52,7 +49,6 @@ class DaysDao:
         profile = self._profile_repository.get_profile(Days, user)
         return profile if isinstance(profile, Days) else None
 
-
 class HoursDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
         self._profile_repository = ProfileRepository(session_factory or SessionFactory)
@@ -61,7 +57,6 @@ class HoursDao:
         profile = self._profile_repository.get_profile(Hours, user)
         return profile if isinstance(profile, Hours) else None
 
-
 class IpAddressDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
         self._profile_repository = ProfileRepository(session_factory or SessionFactory)
@@ -69,7 +64,6 @@ class IpAddressDao:
     def get_profile_by_user(self, user: str) -> IpAddress | None:
         profile = self._profile_repository.get_profile(IpAddress, user)
         return profile if isinstance(profile, IpAddress) else None
-
 
 class ServerDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:

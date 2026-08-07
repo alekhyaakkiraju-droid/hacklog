@@ -1,7 +1,5 @@
 """Structured logging configuration for hacklog using structlog."""
 
-from __future__ import annotations
-
 import json
 import logging
 import re
@@ -18,12 +16,10 @@ _SENSITIVE_KEY_PATTERN = re.compile(
 
 _MASK_PII = False
 
-
 def _mask_value(value: str) -> str:
     if len(value) <= 4:
         return "****"
     return f"{value[:2]}****{value[-2:]}"
-
 
 def _redact_secrets(
     _logger: Any,
@@ -49,7 +45,6 @@ def _redact_secrets(
             redacted[key] = value
     return redacted
 
-
 def _mask_pii(
     _logger: Any,
     _method_name: str,
@@ -72,7 +67,6 @@ def _mask_pii(
             if isinstance(value, str):
                 event_dict[key] = _mask_value(value)
     return event_dict
-
 
 def configure_logging(
     level: int = logging.INFO,
@@ -121,21 +115,17 @@ def configure_logging(
     root_logger.addHandler(handler)
     root_logger.setLevel(level)
 
-
 def get_logger(component: str) -> structlog.stdlib.BoundLogger:
     """Return a logger bound with the component name."""
     return structlog.get_logger(component=component)
-
 
 def bind_context(**kwargs: Any) -> None:
     """Bind request-scoped context values for subsequent log entries."""
     structlog.contextvars.bind_contextvars(**kwargs)
 
-
 def clear_context() -> None:
     """Clear request-scoped context values."""
     structlog.contextvars.clear_contextvars()
-
 
 def render_event_dict(event_dict: dict[str, Any]) -> str:
     """Render an event dictionary as JSON for testing."""
@@ -144,7 +134,6 @@ def render_event_dict(event_dict: dict[str, Any]) -> str:
     if isinstance(rendered, bytes):
         return rendered.decode("utf-8")
     return rendered
-
 
 def parse_json_log_line(line: str) -> dict[str, Any]:
     """Parse a JSON log line emitted by structlog."""

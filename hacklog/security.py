@@ -1,7 +1,5 @@
 """Network-layer syslog ingestion security controls."""
 
-from __future__ import annotations
-
 import ipaddress
 import os
 import threading
@@ -17,7 +15,6 @@ except ImportError:
 
 logger = get_logger("security")
 
-
 @dataclass(frozen=True)
 class ValidationResult:
     """Outcome of validating an incoming syslog datagram."""
@@ -25,18 +22,15 @@ class ValidationResult:
     accepted: bool
     reason: str | None = None
 
-
 def parse_allowed_cidrs(raw_value: str | None) -> list[str]:
     """Parse comma-separated CIDR values from configuration."""
     if not raw_value or not raw_value.strip():
         return []
     return [entry.strip() for entry in raw_value.split(",") if entry.strip()]
 
-
 def allowed_cidrs_from_env() -> list[str]:
     """Load allowlisted CIDRs from HACKLOG_ALLOWED_CIDRS."""
     return parse_allowed_cidrs(os.environ.get("HACKLOG_ALLOWED_CIDRS"))
-
 
 class IpAllowlist:
     """CIDR-based source IP allowlist."""
@@ -54,7 +48,6 @@ class IpAllowlist:
         except ValueError:
             return False
         return any(address in network for network in self._networks)
-
 
 class TokenBucket:
     """Token bucket used for per-source rate limiting."""
@@ -76,7 +69,6 @@ class TokenBucket:
             self.tokens -= amount
             return True
         return False
-
 
 class RateLimiter:
     """Thread-safe per-source token bucket rate limiter with TTL cleanup."""
@@ -114,7 +106,6 @@ class RateLimiter:
         ]
         for source_ip in expired:
             del self._buckets[source_ip]
-
 
 class MessageValidator:
     """Validate syslog datagrams before they enter the processing queue."""
@@ -156,7 +147,6 @@ class MessageValidator:
                 message_size=message_size,
             )
         return ValidationResult(accepted=False, reason=reason)
-
 
 def build_message_validator(
     allowed_cidrs: list[str] | None = None,

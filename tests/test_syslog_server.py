@@ -1,7 +1,5 @@
 """Tests for asyncio syslog_server module."""
 
-from __future__ import annotations
-
 import asyncio
 import signal
 import socket
@@ -19,7 +17,6 @@ from hacklog.syslog_server import (
     run_async_syslog_server,
 )
 
-
 def _validator(
     *,
     cidrs: list[str] | None = None,
@@ -34,7 +31,6 @@ def _validator(
         meter_and_log=False,
     )
 
-
 @pytest.mark.asyncio
 async def test_datagram_received_enqueues_valid_message() -> None:
     queue: asyncio.Queue = asyncio.Queue(maxsize=10)
@@ -47,7 +43,6 @@ async def test_datagram_received_enqueues_valid_message() -> None:
     assert msg.host == "127.0.0.1"
     assert msg.port == 1234
 
-
 @pytest.mark.asyncio
 async def test_datagram_received_rejects_non_allowlisted_ip() -> None:
     queue: asyncio.Queue = asyncio.Queue(maxsize=10)
@@ -59,14 +54,12 @@ async def test_datagram_received_rejects_non_allowlisted_ip() -> None:
     protocol.datagram_received(b"blocked", ("203.0.113.1", 9000))
     assert queue.empty()
 
-
 @pytest.mark.asyncio
 async def test_datagram_received_rejects_oversized_message() -> None:
     queue: asyncio.Queue = asyncio.Queue(maxsize=10)
     protocol = SyslogProtocol(queue, _validator(max_size=16), accepting=lambda: True)
     protocol.datagram_received(b"x" * 32, ("127.0.0.1", 9000))
     assert queue.empty()
-
 
 @pytest.mark.asyncio
 async def test_datagram_received_rate_limits_excessive_sources() -> None:
@@ -79,7 +72,6 @@ async def test_datagram_received_rate_limits_excessive_sources() -> None:
     protocol.datagram_received(b"one", ("10.0.0.5", 9000))
     protocol.datagram_received(b"two", ("10.0.0.5", 9000))
     assert queue.qsize() == 1
-
 
 @pytest.mark.asyncio
 async def test_datagram_received_drops_when_queue_full() -> None:
@@ -96,7 +88,6 @@ async def test_datagram_received_drops_when_queue_full() -> None:
     )._value.get()  # noqa: SLF001
     assert after - before == 1.0
     assert queue.qsize() == 1
-
 
 @pytest.mark.asyncio
 async def test_message_consumer_processes_enqueued_messages() -> None:
@@ -124,7 +115,6 @@ async def test_message_consumer_processes_enqueued_messages() -> None:
 
     assert len(processed) == 1
     parser.parse_log_line.assert_called_once()
-
 
 @pytest.mark.asyncio
 async def test_udp_integration_receives_datagram_via_asyncio_server() -> None:
@@ -154,7 +144,6 @@ async def test_udp_integration_receives_datagram_via_asyncio_server() -> None:
     transport.close()
     assert isinstance(msg, SyslogMsg)
     assert msg.data == "integration-test"
-
 
 @pytest.mark.asyncio
 async def test_run_async_syslog_server_graceful_shutdown(
@@ -188,7 +177,6 @@ async def test_run_async_syslog_server_graceful_shutdown(
     assert shutdown_callbacks
     shutdown_callbacks[0]()
     await asyncio.wait_for(server_task, timeout=5)
-
 
 @pytest.mark.asyncio
 async def test_end_to_end_udp_parse_and_process_wo002_corpus() -> None:

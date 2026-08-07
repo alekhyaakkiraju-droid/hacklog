@@ -1,7 +1,5 @@
 """Prometheus metrics definitions and exposition for hacklog."""
 
-from __future__ import annotations
-
 import os
 import socket
 import threading
@@ -67,14 +65,12 @@ _server_lock = threading.Lock()
 _server_started = False
 _server_port: int | None = None
 
-
 def metrics_enabled(enabled: bool | None = None) -> bool:
     """Return whether the metrics HTTP server should be enabled."""
     if enabled is not None:
         return enabled
     value = os.environ.get("HACKLOG_METRICS_ENABLED", "false").strip().lower()
     return value in {"1", "true", "yes", "on"}
-
 
 def metrics_port(port: int | None = None) -> int:
     """Return the configured metrics HTTP port."""
@@ -83,18 +79,15 @@ def metrics_port(port: int | None = None) -> int:
     raw_port = os.environ.get("HACKLOG_METRICS_PORT", "9090")
     return int(raw_port)
 
-
 def render_metrics() -> bytes:
     """Render all registered metrics in Prometheus exposition format."""
     return generate_latest()
-
 
 def find_available_port() -> int:
     """Find an available TCP port for the metrics HTTP server."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
-
 
 def start_metrics_server(
     port: int | None = None, enabled: bool | None = None
@@ -116,14 +109,12 @@ def start_metrics_server(
         _server_port = selected_port
         return selected_port
 
-
 def reset_metrics_server_state_for_testing() -> None:
     """Reset module-level server state between tests."""
     global _server_started, _server_port
     with _server_lock:
         _server_started = False
         _server_port = None
-
 
 def get_metric_objects() -> dict[str, Any]:
     """Return the defined metric objects for validation and testing."""
@@ -137,6 +128,5 @@ def get_metric_objects() -> dict[str, Any]:
         "queue_depth": queue_depth,
         "db_operation_duration_seconds": db_operation_duration_seconds,
     }
-
 
 METRICS_CONTENT_TYPE = CONTENT_TYPE_LATEST

@@ -1,7 +1,5 @@
 """Asyncio UDP syslog listener and message consumer."""
 
-from __future__ import annotations
-
 import asyncio
 import os
 import signal
@@ -31,11 +29,9 @@ DEFAULT_SHUTDOWN_DRAIN_SECONDS = 30.0
 DEFAULT_PAYLOAD_ENCODING = "utf-8"
 _POISON_PILL = object()
 
-
 def syslog_payload_encoding() -> str:
     """Return configured syslog payload text encoding (default UTF-8)."""
     return os.environ.get("HACKLOG_SYSLOG_ENCODING", DEFAULT_PAYLOAD_ENCODING)
-
 
 def build_validator(syslog_config: SyslogConfig | None = None) -> MessageValidator:
     """Build a MessageValidator from syslog configuration."""
@@ -47,7 +43,6 @@ def build_validator(syslog_config: SyslogConfig | None = None) -> MessageValidat
         rate_per_second=float(syslog_config.rate_limit_per_source),
         burst_capacity=syslog_config.rate_limit_per_source,
     )
-
 
 class SyslogProtocol(asyncio.DatagramProtocol):
     """Asyncio datagram protocol for syslog UDP ingestion."""
@@ -108,7 +103,6 @@ class SyslogProtocol(asyncio.DatagramProtocol):
             error=str(exc) if exc else None,
         )
 
-
 async def message_consumer(
     queue: asyncio.Queue[SyslogMsg | object],
     parser: Parser,
@@ -145,7 +139,6 @@ async def message_consumer(
                 )
         finally:
             queue.task_done()
-
 
 async def run_async_syslog_server(
     *,

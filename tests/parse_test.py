@@ -33,7 +33,6 @@ else:
 
 _parser = Parser(_success_pattern, _failure_pattern)
 
-
 class ParserTests(unittest.TestCase):
     def test_starting_out(self):
         self.assertEqual(1, 1)
@@ -109,10 +108,8 @@ class ParserTests(unittest.TestCase):
             )
             self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
-
 def main():
     unittest.main()
-
 
 if __name__ == "__main__":
     main()

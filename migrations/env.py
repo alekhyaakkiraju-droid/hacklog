@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import sys
 from logging.config import fileConfig
@@ -23,10 +21,8 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-
 def _database_url() -> str:
     return os.environ.get("HACKLOG_DB_URL") or config.get_main_option("sqlalchemy.url")
-
 
 def run_migrations_offline() -> None:
     context.configure(
@@ -39,7 +35,6 @@ def run_migrations_offline() -> None:
 
     with context.begin_transaction():
         context.run_migrations()
-
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
@@ -59,7 +54,6 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
-
 
 if context.is_offline_mode():
     run_migrations_offline()

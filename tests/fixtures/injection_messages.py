@@ -1,7 +1,5 @@
 """Injection payloads and valid syslog fixtures for field validation tests."""
 
-from __future__ import annotations
-
 VALID_SYSLOG_FIXTURES = {
     "success_ssh": (
         "<14>sshd[3070]: Accepted publickey for alice from 10.42.10.2 port 2005 ssh2"
