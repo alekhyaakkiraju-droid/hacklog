@@ -5,9 +5,10 @@ from __future__ import annotations
 import math
 from datetime import date
 
+from alerting import AlertService
 from entities import EventLog, IpAddress, Threshold, User, Weight
 from logging_config import get_logger
-from services import EmailService, UpdateService
+from services import UpdateService
 
 logger = get_logger("scoring")
 
@@ -18,7 +19,7 @@ class ScoringEngine:
     def __init__(
         self,
         update_service: UpdateService,
-        alert_service: EmailService,
+        alert_service: AlertService,
     ) -> None:
         self._update_service = update_service
         self._alert_service = alert_service
@@ -117,7 +118,7 @@ class ScoringEngine:
         return int(ip_score)
 
 
-def smoke_test_process(update_service: UpdateService, alert_service: EmailService) -> None:
+def smoke_test_process(update_service: UpdateService, alert_service: AlertService) -> None:
     """Exercise scoring with injected services (development helper)."""
     engine = ScoringEngine(update_service, alert_service)
     event_log = EventLog(date.today(), "nrhine", "127.0.0.1", True, "ae1-app80-prd")

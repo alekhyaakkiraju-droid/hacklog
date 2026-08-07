@@ -2,7 +2,7 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _HACKLOG_DIR = _TESTS_DIR.parent / "hacklog"
@@ -10,8 +10,9 @@ for _path in (_TESTS_DIR, _HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
+from alerting import AlertService
 from entities import Days, EventLog, Hours, IpAddress, Servers, User
-from services import EmailService, UpdateService
+from services import UpdateService
 
 try:
     from hacklog.config import SmtpConfig
@@ -29,7 +30,7 @@ _smtp_config = SmtpConfig(
     recipient="soc@example.com",
     use_tls=True,
 )
-emailService = EmailService(_smtp_config)
+emailService = AlertService(_smtp_config)
 updateService = UpdateService()
 
 
@@ -44,12 +45,12 @@ class ServiceTests(unittest.TestCase):
         updateService._profile_repository = MagicMock()
         updateService._user_repository = MagicMock()
         updateService._audit_repository = MagicMock()
-        emailService.mailServer = MagicMock()
+        self._smtp_sender = AsyncMock()
+        emailService._smtp_sender = self._smtp_sender
 
     def test_email_send(self):
         emailService.sendEmailAlert(self._user, self._eventLog)
-        emailService.mailServer.connect.assert_called_once()
-        emailService.mailServer.sendmail.assert_called_once()
+        self._smtp_sender.assert_awaited_once()
 
     def test_update_day_new_user(self):
         updateService._profile_repository.get_profile.return_value = None

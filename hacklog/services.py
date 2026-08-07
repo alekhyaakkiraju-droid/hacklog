@@ -1,22 +1,14 @@
-"""Email alerts and profile update services."""
+"""Profile update services."""
 
-import smtplib
 from collections.abc import Callable
 from datetime import datetime
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from sqlalchemy.orm import Session
 
 from entities import Days, EventLog, Hours, IpAddress, Servers, User
 from logging_config import get_logger
 from repositories import AuditRepository, ProfileRepository, UserRepository
 from session import Session as SessionFactory
-
-try:
-    from hacklog.config import SmtpConfig
-except ImportError:
-    from config import SmtpConfig
 
 logger = get_logger("services")
 
@@ -28,73 +20,6 @@ class HourRangeEnum:
     AFTERNOON = range(12, 16)
     EVE = range(16, 20)
     NIGHT = range(20, 24)
-
-
-class EmailService:
-    def __init__(self, smtp_config: SmtpConfig | None) -> None:
-        if smtp_config is None:
-            raise TypeError("EmailService requires SmtpConfig from ConfigManager")
-        if not isinstance(smtp_config, SmtpConfig):
-            raise TypeError("EmailService requires SmtpConfig from ConfigManager")
-        self._smtp_config = smtp_config
-        self.fromAddress = smtp_config.sender
-        self.recipient = smtp_config.recipient
-        self.mailServer: smtplib.SMTP | None = None
-
-    def _ensure_mail_server(self) -> None:
-        if self.mailServer is not None:
-            return
-        self.mailServer = smtplib.SMTP(self._smtp_config.host, self._smtp_config.port)
-        if self._smtp_config.use_tls:
-            self.mailServer.ehlo()
-            self.mailServer.starttls()
-            self.mailServer.ehlo()
-        self.mailServer.login(
-            self._smtp_config.username,
-            self._smtp_config.password.get_secret_value(),
-        )
-
-    def sendMail(self, toAddress: str, msg: MIMEMultipart) -> None:
-        msg["From"] = self.fromAddress
-        self._ensure_mail_server()
-        self.mailServer.connect()
-        self.mailServer.sendmail(self.fromAddress, toAddress, msg.as_string())
-        logger.info(
-            "email_sent",
-            operation="send_mail",
-            recipient=toAddress,
-        )
-
-    def sendEmailAlert(self, user: User, eventLog: EventLog) -> None:
-        to_address = self.recipient
-
-        logger.info(
-            "email_alert_prepared",
-            operation="send_email_alert",
-            username=user.username,
-            source_ip=eventLog.ipAddress,
-            server=eventLog.server,
-            score=user.score,
-            recipient=to_address,
-        )
-
-        msg = MIMEMultipart()
-        msg["Subject"] = "EMAIL ALERT - CONCERNING SSH ACTIVITY ON: " + eventLog.server
-        msg["To"] = to_address
-
-        text = (
-            "Hi!\nHow are you?\nThere was some suspicious activity on the following server: "
-            + eventLog.server
-            + " for user: "
-            + user.username
-            + "\n Their current score is "
-            + str(user.score)
-        )
-
-        part = MIMEText(text, "plain")
-        msg.attach(part)
-
-        self.sendMail(to_address, msg)
 
 
 class UpdateService:

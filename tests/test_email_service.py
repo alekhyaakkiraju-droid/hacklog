@@ -1,12 +1,12 @@
-"""Unit tests for EmailService credential loading."""
+"""Unit tests for AlertService credential loading."""
 
 from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
 
+from hacklog.alerting import AlertService
 from hacklog.config import SmtpConfig, load_config, load_config_or_exit
-from hacklog.services import EmailService
 
 
 def _set_test_smtp_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -31,20 +31,20 @@ def isolated_smtp_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(key, raising=False)
 
 
-def test_email_service_initialization_succeeds_with_env_vars(
+def test_alert_service_initialization_succeeds_with_env_vars(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _set_test_smtp_env(monkeypatch)
     smtp_config = load_config().smtp
 
-    service = EmailService(smtp_config)
+    service = AlertService(smtp_config)
 
     assert service.fromAddress == "alerts@example.com"
     assert service.recipient == "soc@example.com"
     assert service.mailServer is None
 
 
-def test_email_service_initialization_fails_without_smtp_password(
+def test_alert_service_initialization_fails_without_smtp_password(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "test@example.com")
@@ -70,9 +70,9 @@ def test_startup_exits_when_smtp_password_missing(monkeypatch: pytest.MonkeyPatc
     assert str(exc_info.value) == "HACKLOG_SMTP_PASSWORD environment variable is required"
 
 
-def test_email_service_requires_smtp_config_object() -> None:
+def test_alert_service_requires_smtp_config_object() -> None:
     with pytest.raises(TypeError):
-        EmailService(None)
+        AlertService(None)
 
     with pytest.raises(TypeError):
-        EmailService(object())
+        AlertService(object())

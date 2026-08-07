@@ -8,8 +8,9 @@ from entities import create_db_engine, create_tables
 from logging_config import configure_logging, get_logger
 from optparse import OptionParser
 from parse import Parser
+from alerting import AlertService
 from scoring import ScoringEngine
-from services import EmailService, UpdateService
+from services import UpdateService
 from session import Session
 from syslog_server import DEFAULT_QUEUE_MAXSIZE, run_async_syslog_server
 
@@ -104,7 +105,7 @@ class SyslogServer:
         create_tables(self.db_engine)
         Session.configure(bind=self.db_engine)
         update_service = UpdateService()
-        alert_service = EmailService(app_config.smtp)
+        alert_service = AlertService(app_config.smtp)
         self.scoring_engine = ScoringEngine(update_service, alert_service)
         self.run()
 
