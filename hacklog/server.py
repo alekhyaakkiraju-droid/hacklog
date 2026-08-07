@@ -3,13 +3,15 @@
 import asyncio
 import configparser
 
-import algorithm
 from config import load_config_or_exit
 from entities import create_db_engine, create_tables
 from logging_config import configure_logging, get_logger
 from optparse import OptionParser
 from parse import Parser
-from syslog_server import run_async_syslog_server
+from scoring import ScoringEngine
+from services import EmailService, UpdateService
+from session import Session
+from syslog_server import DEFAULT_QUEUE_MAXSIZE, run_async_syslog_server
 
 logger = get_logger("server")
 
@@ -28,6 +30,9 @@ class SyslogServer:
         self.emailTest = False
         self.successPattern: str | None = None
         self.failurePattern: str | None = None
+        self.message_queue: asyncio.Queue = asyncio.Queue(maxsize=DEFAULT_QUEUE_MAXSIZE)
+        self.scoring_engine: ScoringEngine | None = None
+        self.db_engine = None
 
     def parceConfig(self, config_file: str) -> None:
         config = configparser.ConfigParser(interpolation=None)
@@ -70,6 +75,9 @@ class SyslogServer:
         return Parser()
 
     def run(self) -> None:
+        if self.scoring_engine is None:
+            raise RuntimeError("ScoringEngine must be wired before run()")
+
         app_config = load_config_or_exit()
         syslog = app_config.syslog
         bind_address = self.bind_address or syslog.bind_address
@@ -81,8 +89,9 @@ class SyslogServer:
                 bind_address=bind_address,
                 port=port,
                 parser=parser,
-                process_event=algorithm.processEventLog,
+                process_event=self.scoring_engine.processEventLog,
                 syslog_config=syslog,
+                queue=self.message_queue,
             )
         )
 
@@ -91,9 +100,12 @@ class SyslogServer:
         self.parceConfig(self.config_file)
         self.setLogging()
         app_config = load_config_or_exit()
-        algorithm.setServices(app_config.smtp)
-        create_db_engine(self)
-        create_tables()
+        self.db_engine = create_db_engine(self)
+        create_tables(self.db_engine)
+        Session.configure(bind=self.db_engine)
+        update_service = UpdateService()
+        alert_service = EmailService(app_config.smtp)
+        self.scoring_engine = ScoringEngine(update_service, alert_service)
         self.run()
 
 

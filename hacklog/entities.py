@@ -5,16 +5,14 @@ from enum import IntEnum
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
-
-from session import Session
-
-db = None
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
     pass
+
 MutableProfile = MutableDict.as_mutable(JSON)
 
 
@@ -36,14 +34,14 @@ class Threshold(IntEnum):
     SCAREDATEEXPIRE = 1
 
 
-def create_db_engine(server: Any) -> None:
-    global db
-    db = create_engine("sqlite:///" + server.dbFile)
+def create_db_engine(server: Any) -> Engine:
+    """Create and return the SQLAlchemy engine for the configured database file."""
+    return create_engine("sqlite:///" + server.dbFile)
 
 
-def create_tables() -> None:
-    Base.metadata.create_all(db)
-    Session.configure(bind=db)
+def create_tables(engine: Engine) -> None:
+    """Create all entity tables on the given engine."""
+    Base.metadata.create_all(engine)
 
 
 class EventLog(Base):
