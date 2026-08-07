@@ -49,3 +49,10 @@
 - **Files:** 3 (+14/-9)
 - **Duration:** 584ss
 - **Approach:** Three targeted fixes to wire configurable parser patterns end-to-end. (1) _build_parser() in SyslogServer was rewritten to unconditionally pass success_pattern, failure_pattern, and test_enabled to Parser, removing the test-only guard that silently discarded production config patterns. (2) parse_config() was updated to strip surrounding quote characters from pattern values returned by configparser.get(), preventing literal quote characters from breaking compiled regex. (3) parse_test.py was updated to pass test_enabled=_server.test_enabled to the Parser constructor so the test harness respects the flag read from serverTest.conf. The config file itself had its quoted patterns unquoted since configparser already returns the raw string value.
+
+## WO-033: User Story: WO-033 - Fix scoring algorithm scare count reset for negative time differences
+- **Status:** completed
+- **Commit:** `fe51a7a`
+- **Files:** 1 (+54/-0)
+- **Duration:** 260ss
+- **Approach:** Criterion 1 (abs() on timeDiff.days) and criterion 4 (structlog logging) were already satisfied in scoring.py from prior work. The gap was criteria 2 and 3: no tests covered the negative timeDiff scenario. Added three unit tests to test_scoring_engine.py using mocked services and calculate_new_score to isolate the scare-count reset branch: one tests a historical event (event date before last_scare_date → negative days), one tests the normal forward-time case (positive days), and one verifies the reset is NOT triggered when the event is on the same day (abs(days) < expire threshold).
