@@ -11,7 +11,7 @@ WORKDIR /build
 # Copy locked runtime deps first for layer caching (Sonar S8544).
 COPY requirements-runtime.txt ./
 
-RUN pip install --no-cache-dir --only-binary=:all: -r requirements-runtime.txt
+RUN pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements-runtime.txt
 
 # Copy application source.  Changing only source invalidates this layer onward
 # but preserves the dependency layer above.
