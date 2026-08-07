@@ -1,0 +1,92 @@
+# docker-compose.yml — hacklog development / test environment
+#
+# Usage:
+#   cp .env.example .env && $EDITOR .env   # fill in SMTP secrets
+#   docker compose up -d                   # start hacklog
+#   docker compose --profile monitoring up -d  # start with Prometheus
+#
+# Required environment variables (set in .env or the environment):
+#   HACKLOG_SMTP_USER, HACKLOG_SMTP_PASSWORD, HACKLOG_SMTP_SENDER,
+#   HACKLOG_ALERT_RECIPIENT
+
+services:
+  hacklog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hacklog:latest
+    container_name: hacklog
+    restart: unless-stopped
+
+    # ── Syslog UDP listener ──────────────────────────────────────────────────
+    ports:
+      - "${HACKLOG_SYSLOG_PORT:-10514}:10514/udp"
+      # Expose Prometheus metrics port when metrics are enabled.
+      - "${HACKLOG_METRICS_PORT:-9090}:9090"
+
+    # ── Persistent volumes ───────────────────────────────────────────────────
+    volumes:
+      - hacklog_data:/data
+      - hacklog_logs:/var/log/hacklog
+
+    # ── Configuration via environment variables ──────────────────────────────
+    # Required secrets must be supplied in .env or the host environment.
+    # Optional overrides are shown commented out with their defaults.
+    environment:
+      # SMTP — required secrets
+      - HACKLOG_SMTP_HOST=${HACKLOG_SMTP_HOST:-smtp.gmail.com}
+      - HACKLOG_SMTP_PORT=${HACKLOG_SMTP_PORT:-587}
+      - HACKLOG_SMTP_USER=${HACKLOG_SMTP_USER}
+      - HACKLOG_SMTP_PASSWORD=${HACKLOG_SMTP_PASSWORD}
+      - HACKLOG_SMTP_SENDER=${HACKLOG_SMTP_SENDER}
+      - HACKLOG_ALERT_RECIPIENT=${HACKLOG_ALERT_RECIPIENT}
+
+      # Syslog listener
+      - HACKLOG_SYSLOG_BIND_ADDRESS=0.0.0.0
+      - HACKLOG_SYSLOG_PORT=10514
+      # - HACKLOG_SYSLOG_MAX_MESSAGE_SIZE=2048
+      # - HACKLOG_SYSLOG_RATE_LIMIT_PER_SOURCE=100
+      # - HACKLOG_ALLOWED_CIDRS=10.0.0.0/8,192.168.0.0/16
+
+      # Database — use the mounted /data volume
+      - HACKLOG_DATABASE_DB_URL=sqlite:////data/hacklog.db
+      # - HACKLOG_DATABASE_POOL_SIZE=5
+
+      # Metrics
+      - HACKLOG_METRICS_ENABLED=${HACKLOG_METRICS_ENABLED:-false}
+      - HACKLOG_METRICS_PORT=${HACKLOG_METRICS_PORT:-9090}
+
+      # Scoring weights (defaults match the legacy algorithm.py constants)
+      # - HACKLOG_SCORING_HOURS_WEIGHT=10
+      # - HACKLOG_SCORING_DAYS_WEIGHT=10
+      # - HACKLOG_SCORING_SERVER_WEIGHT=15
+      # - HACKLOG_SCORING_SUCCESS_WEIGHT=35
+      # - HACKLOG_SCORING_CRITICAL_THRESHOLD=50
+      # - HACKLOG_SCORING_SCARY_THRESHOLD=30
+
+  # ── Optional Prometheus monitoring (start with --profile monitoring) ────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hacklog-prometheus
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    depends_on:
+      - hacklog
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  hacklog_data:
+    driver: local
+  hacklog_logs:
+    driver: local
+  prometheus_data:
+    driver: local

@@ -1,0 +1,16 @@
+# Prometheus configuration for hacklog dev/test environment.
+# Used by docker-compose.yml when the "monitoring" profile is active.
+#
+# Start with: docker compose --profile monitoring up -d
+# Then visit:  http://localhost:9091
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: hacklog
+    static_configs:
+      - targets:
+          - hacklog:9090
+    metrics_path: /metrics
