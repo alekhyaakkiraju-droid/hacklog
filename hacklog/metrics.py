@@ -7,7 +7,13 @@ import socket
 import threading
 from typing import Any
 
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 from prometheus_client import start_http_server as _prometheus_start_http_server
 
 messages_received_total = Counter(
@@ -90,7 +96,9 @@ def find_available_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def start_metrics_server(port: int | None = None, enabled: bool | None = None) -> int | None:
+def start_metrics_server(
+    port: int | None = None, enabled: bool | None = None
+) -> int | None:
     """Start the Prometheus /metrics HTTP server when enabled."""
     global _server_started, _server_port
 

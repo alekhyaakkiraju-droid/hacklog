@@ -16,7 +16,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from entities import Days, Hours, IpAddress, Servers, create_tables  # noqa: E402
+from entities import Days, Hours, IpAddress, Server, create_tables  # noqa: E402
 from session import Session  # noqa: E402
 
 
@@ -31,13 +31,15 @@ def json_db_engine(tmp_path: Path):
 
 
 PROFILE_FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(encoding="utf-8")
+    (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 ENTITY_CASES = [
     (Days, "days"),
     (Hours, "hours"),
-    (Servers, "servers"),
+    (Server, "servers"),
     (IpAddress, "ipAddress"),
 ]
 

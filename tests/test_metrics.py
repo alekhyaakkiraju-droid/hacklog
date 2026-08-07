@@ -88,7 +88,9 @@ def test_metrics_server_disabled_by_default() -> None:
     assert start_metrics_server(port=find_available_port()) is None
 
 
-def test_metrics_server_can_be_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_metrics_server_can_be_disabled_via_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("HACKLOG_METRICS_ENABLED", "false")
     assert start_metrics_server(port=find_available_port(), enabled=None) is None
 
@@ -105,7 +107,9 @@ def test_metrics_endpoint_returns_prometheus_text(
     messages_received_total.inc(2)
     queue_depth.set(4)
 
-    with urllib.request.urlopen(f"http://127.0.0.1:{port}/metrics", timeout=2) as response:
+    with urllib.request.urlopen(
+        f"http://127.0.0.1:{port}/metrics", timeout=2
+    ) as response:
         body = response.read().decode("utf-8")
         content_type = response.headers.get("Content-Type", "")
 

@@ -264,9 +264,9 @@ class AlertService:
         if not isinstance(smtp_config, SmtpConfig):
             raise TypeError("AlertService requires SmtpConfig from ConfigManager")
         self._smtp_config = smtp_config
-        self.fromAddress = smtp_config.sender
+        self.from_address = smtp_config.sender
         self.recipient = smtp_config.recipient
-        self.mailServer = None
+        self.mail_server = None
         self._circuit = circuit_breaker or CircuitBreaker()
         if dead_letter_writer is not None:
             self._dead_letter = dead_letter_writer
@@ -297,7 +297,7 @@ class AlertService:
             "alert_send_attempt",
             operation="send_alert",
             username=user.username,
-            source_ip=event_log.ipAddress,
+            source_ip=event_log.ip_address,
             server=event_log.server,
             score=user.score,
             recipient=self.recipient,
@@ -307,7 +307,7 @@ class AlertService:
         message = build_alert_message(
             user,
             event_log,
-            sender=self.fromAddress,
+            sender=self.from_address,
             recipient=self.recipient,
         )
 
@@ -353,7 +353,7 @@ class AlertService:
             )
         )
 
-    def sendEmailAlert(self, user: User, event_log: EventLog) -> None:
+    def send_email_alert(self, user: User, event_log: EventLog) -> None:
         """Sync adapter for the legacy scoring pipeline."""
         try:
             loop = asyncio.get_running_loop()
@@ -374,6 +374,6 @@ class AlertService:
             "server": event_log.server,
             "score": user.score,
             "timestamp": _format_alert_timestamp(event_log),
-            "source_ip": event_log.ipAddress,
+            "source_ip": event_log.ip_address,
             "reason": reason,
         }

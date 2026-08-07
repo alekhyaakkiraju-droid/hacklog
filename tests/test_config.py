@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from hacklog.config import ScoringConfig, load_config
 
-
 LEGACY_WEIGHTS = {
     "hours_weight": 10,
     "days_weight": 10,

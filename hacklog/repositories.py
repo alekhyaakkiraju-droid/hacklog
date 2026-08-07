@@ -7,16 +7,15 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import TypeVar
 
+from entities import Days, EventLog, Hours, IpAddress, Server, User
+from logging_config import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from entities import Days, EventLog, Hours, IpAddress, Servers, User
-from logging_config import get_logger
-
 logger = get_logger("repositories")
 
-ProfileEntity = Days | Hours | Servers | IpAddress
-ProfileEntityType = type[Days] | type[Hours] | type[Servers] | type[IpAddress]
+ProfileEntity = Days | Hours | Server | IpAddress
+ProfileEntityType = type[Days] | type[Hours] | type[Server] | type[IpAddress]
 T = TypeVar("T")
 
 
@@ -48,9 +47,11 @@ class BaseRepository:
 
 
 class ProfileRepository(BaseRepository):
-    """Parameterized CRUD for Days, Hours, Servers, and IpAddress profiles."""
+    """Parameterized CRUD for Days, Hours, Server, and IpAddress profiles."""
 
-    def get_profile(self, entity_class: ProfileEntityType, username: str) -> ProfileEntity | None:
+    def get_profile(
+        self, entity_class: ProfileEntityType, username: str
+    ) -> ProfileEntity | None:
         with self._session_scope() as session:
             return session.execute(
                 select(entity_class).where(entity_class.username == username)
@@ -110,15 +111,15 @@ class UserRepository(BaseRepository):
             session.commit()
 
     def update_scare_count(self, user: User) -> User:
-        user.scareCount += 1
-        user.lastScareDate = datetime.today()
+        user.scare_count += 1
+        user.last_scare_date = datetime.today()
         with self._session_scope() as session:
             session.merge(user)
             session.commit()
         return user
 
     def reset_scare_count(self, user: User) -> None:
-        user.scareCount = 0
+        user.scare_count = 0
         with self._session_scope() as session:
             session.merge(user)
             session.commit()
@@ -135,5 +136,5 @@ class AuditRepository(BaseRepository):
                 "event_log_saved",
                 operation="save_event",
                 username=event_log.username,
-                source_ip=event_log.ipAddress,
+                source_ip=event_log.ip_address,
             )

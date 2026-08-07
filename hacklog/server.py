@@ -2,13 +2,13 @@
 
 import asyncio
 import configparser
+from optparse import OptionParser
 
+from alerting import AlertService
 from config import load_config_or_exit
 from entities import create_db_engine, create_tables
 from logging_config import configure_logging, get_logger
-from optparse import OptionParser
 from parse import Parser
-from alerting import AlertService
 from scoring import ScoringEngine
 from services import UpdateService
 from session import Session
@@ -21,21 +21,21 @@ class SyslogServer:
     """Syslog server orchestrating config, parsing, and asyncio UDP ingestion."""
 
     def __init__(self) -> None:
-        self.dbFile = "hacklog.db"
+        self.db_file = "hacklog.db"
         self.port = 10514
         self.bind_address = "127.0.0.1"
         self.config_file = "../conf/server.conf"
         self.loglevel = 10
         self.usage = "usage: %prog -c config_file"
-        self.testEnabled = False
-        self.emailTest = False
-        self.successPattern: str | None = None
-        self.failurePattern: str | None = None
+        self.test_enabled = False
+        self.email_test = False
+        self.success_pattern: str | None = None
+        self.failure_pattern: str | None = None
         self.message_queue: asyncio.Queue = asyncio.Queue(maxsize=DEFAULT_QUEUE_MAXSIZE)
         self.scoring_engine: ScoringEngine | None = None
         self.db_engine = None
 
-    def parceConfig(self, config_file: str) -> None:
+    def parse_config(self, config_file: str) -> None:
         config = configparser.ConfigParser(interpolation=None)
         config.read(config_file)
 
@@ -44,17 +44,17 @@ class SyslogServer:
         if config.has_option("SyslogServer", "bind_port"):
             self.port = config.getint("SyslogServer", "port")
         if config.has_option("SyslogServer", "db_file"):
-            self.dbFile = config.get("SyslogServer", "db_file")
+            self.db_file = config.get("SyslogServer", "db_file")
         if config.has_option("MailServer", "gmail_test"):
-            self.emailTest = config.getboolean("MailServer", "gmail_test")
+            self.email_test = config.getboolean("MailServer", "gmail_test")
         if config.has_option("Parse", "test_enabled"):
-            self.testEnabled = config.getboolean("Parse", "test_enabled")
+            self.test_enabled = config.getboolean("Parse", "test_enabled")
         if config.has_option("Parse", "success_pattern"):
-            self.successPattern = config.get("Parse", "success_pattern")
+            self.success_pattern = config.get("Parse", "success_pattern")
         if config.has_option("Parse", "failure_pattern"):
-            self.failurePattern = config.get("Parse", "failure_pattern")
+            self.failure_pattern = config.get("Parse", "failure_pattern")
 
-    def readCmdArgs(self) -> None:
+    def read_cmd_args(self) -> None:
         cmd_parser = OptionParser(usage=self.usage)
         cmd_parser.add_option(
             "-c",
@@ -67,12 +67,12 @@ class SyslogServer:
         if options.config_file:
             self.config_file = options.config_file
 
-    def setLogging(self) -> None:
+    def set_logging(self) -> None:
         configure_logging(level=self.loglevel)
 
     def _build_parser(self) -> Parser:
-        if self.testEnabled:
-            return Parser(self.successPattern, self.failurePattern, self.testEnabled)
+        if self.test_enabled:
+            return Parser(self.success_pattern, self.failure_pattern, self.test_enabled)
         return Parser()
 
     def run(self) -> None:
@@ -90,16 +90,16 @@ class SyslogServer:
                 bind_address=bind_address,
                 port=port,
                 parser=parser,
-                process_event=self.scoring_engine.processEventLog,
+                process_event=self.scoring_engine.process_event_log,
                 syslog_config=syslog,
                 queue=self.message_queue,
             )
         )
 
     def start(self) -> None:
-        self.readCmdArgs()
-        self.parceConfig(self.config_file)
-        self.setLogging()
+        self.read_cmd_args()
+        self.parse_config(self.config_file)
+        self.set_logging()
         app_config = load_config_or_exit()
         self.db_engine = create_db_engine(self)
         create_tables(self.db_engine)

@@ -9,24 +9,24 @@ from entities import EventLog, SyslogMsg
 class Parser:
     def __init__(
         self,
-        successPattern: str | None = None,
-        failurePattern: str | None = None,
-        testEnabled: bool = False,
+        success_pattern: str | None = None,
+        failure_pattern: str | None = None,
+        test_enabled: bool = False,
     ) -> None:
-        self.testEnabled = testEnabled
-        self.successPattern = (
-            successPattern
+        self.test_enabled = test_enabled
+        self.success_pattern = (
+            success_pattern
             or r"Accepted\s+publickey\s+for\s+([0-9a-zA-Z_-]+)\s+from\s+"
             r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+port"
         )
-        self.failurePattern = (
-            failurePattern
+        self.failure_pattern = (
+            failure_pattern
             or r"pam_unix\(sshd:auth\):\s+authentication\s+failure\;\s+login=\s+uid=0\s+"
             r"euid=0\s+tty=ssh+\s+ruser=+\s+rhost=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+"
             r"user=([0-9a-zA-Z_-]+)"
         )
 
-    def parseLogLine(self, message: SyslogMsg | None) -> EventLog | None:
+    def parse_log_line(self, message: SyslogMsg | None) -> EventLog | None:
         return_event: EventLog | None | bool = False
         if message:
             line = message.data
@@ -37,31 +37,39 @@ class Parser:
                 if len(logline_parts) > 5:
                     logline_parts.pop(0)
                     log_entry = " ".join(logline_parts)
-                    match = re.match(self.successPattern, log_entry)
+                    match = re.match(self.success_pattern, log_entry)
                     if match:
                         user_name = match.groups(0)[0]
                         user_ip = match.groups(0)[1]
                         date_time = datetime.now()
 
-                        if self.testEnabled:
+                        if self.test_enabled:
                             date_time = match.groups(0)[3]
-                            date_time = datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
+                            date_time = datetime.strptime(
+                                date_time, "%Y-%m-%d %H:%M:%S"
+                            )
                             host = match.groups(0)[4]
 
-                        return_event = EventLog(date_time, user_name, user_ip, True, host)
+                        return_event = EventLog(
+                            date_time, user_name, user_ip, True, host
+                        )
 
-                    match = re.match(self.failurePattern, log_entry)
+                    match = re.match(self.failure_pattern, log_entry)
                     if match:
                         user_name = match.groups(0)[1]
                         user_ip = match.groups(0)[0]
                         date_time = datetime.now()
 
-                        if self.testEnabled:
+                        if self.test_enabled:
                             date_time = match.groups(0)[2]
-                            date_time = datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
+                            date_time = datetime.strptime(
+                                date_time, "%Y-%m-%d %H:%M:%S"
+                            )
                             host = match.groups(0)[3]
 
-                        return_event = EventLog(date_time, user_name, user_ip, False, host)
+                        return_event = EventLog(
+                            date_time, user_name, user_ip, False, host
+                        )
             elif "Source Network Address" in line and "Account Name:" in line:
                 log_data = logline
 

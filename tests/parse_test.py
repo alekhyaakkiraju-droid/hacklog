@@ -13,9 +13,9 @@ from parse import Parser
 from server import SyslogServer
 
 _server = SyslogServer()
-_server.parceConfig(str(_TESTS_DIR / "serverTest.conf"))
+_server.parse_config(str(_TESTS_DIR / "serverTest.conf"))
 
-if _server.testEnabled:
+if _server.test_enabled:
     _success_pattern = (
         r"Accepted\s+publickey\s+for\s+([0-9a-zA-Z_-]+)\s+from\s+"
         r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+port\s+(\d{1,4})+\s+ssh2+\s+"
@@ -38,14 +38,15 @@ class ParserTests(unittest.TestCase):
     def test_starting_out(self):
         self.assertEqual(1, 1)
 
-    if _server.testEnabled:
+    if _server.test_enabled:
+
         def test_parse_line_success_with_date_ip(self):
             syslog_message = SyslogMsg(
                 "<14>sshd[4105]: Accepted publickey for kantselovich from 10.42.10.2 "
                 "port 7786 ssh2 DATE_TIME 2013-09-23 11:16:48 HOST ae1-app80-prd",
                 "192.168.56.1",
             )
-            self.assertIsInstance(_parser.parseLogLine(syslog_message), EventLog)
+            self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
         def test_parse_line_failure_with_date_ip(self):
             syslog_message = SyslogMsg(
@@ -54,16 +55,17 @@ class ParserTests(unittest.TestCase):
                 "DATE_TIME 2013-09-23 11:52:30 HOST ae1-app80-prd",
                 "192.168.56.1",
             )
-            self.assertIsInstance(_parser.parseLogLine(syslog_message), EventLog)
+            self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
     else:
+
         def test_parse_line_success(self):
             syslog_message = SyslogMsg(
                 "<14>sshd[3070]: Accepted publickey for kantselovich from 10.42.10.2 "
                 "port 2005 ssh2",
                 "192.168.56.1",
             )
-            self.assertIsInstance(_parser.parseLogLine(syslog_message), EventLog)
+            self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
         def test_parse_line_failure(self):
             syslog_message = SyslogMsg(
@@ -71,9 +73,9 @@ class ParserTests(unittest.TestCase):
                 "uid=0 euid=0 tty=ssh ruser= rhost=10.42.10.22 user=msacks",
                 "192.168.56.1",
             )
-            self.assertIsInstance(_parser.parseLogLine(syslog_message), EventLog)
+            self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
-        def test_parse_windows_Logs(self):
+        def test_parse_windows_logs(self):
             syslog_message = SyslogMsg(
                 "<14>Oct 10 14:26:09 USERNAME-DEV-VM Security-Auditing: 4624: AUDIT_SUCCESS "
                 "An account was successfully logged on. Subject: Security ID: S-1-5-18 "
@@ -105,7 +107,7 @@ class ParserTests(unittest.TestCase):
                 "session key. This will be 0 if no session key was requested.",
                 "192.168.56.1",
             )
-            self.assertIsInstance(_parser.parseLogLine(syslog_message), EventLog)
+            self.assertIsInstance(_parser.parse_log_line(syslog_message), EventLog)
 
 
 def main():

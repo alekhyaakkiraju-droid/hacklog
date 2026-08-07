@@ -103,17 +103,17 @@ def _alter_profile_column_to_json(table: str) -> None:
         )
 
 
-def _write_json_profiles(connection: sa.Connection, snapshots: dict[str, list[dict[str, Any]]]) -> None:
+def _write_json_profiles(
+    connection: sa.Connection, snapshots: dict[str, list[dict[str, Any]]]
+) -> None:
     for table, rows in snapshots.items():
         for row in rows:
             connection.execute(
-                sa.text(
-                    f"""
+                sa.text(f"""
                     UPDATE {table}
                     SET profile = :profile
                     WHERE date = :date AND username = :username
-                    """  # noqa: S608
-                ),
+                    """),  # noqa: S608
                 {
                     "profile": json.dumps(row["profile"]),
                     "date": row["date"],
@@ -179,13 +179,11 @@ def downgrade() -> None:
     for table, rows in snapshots.items():
         for row in rows:
             bind.execute(
-                sa.text(
-                    f"""
+                sa.text(f"""
                     UPDATE {table}
                     SET profile = :profile
                     WHERE date = :date AND username = :username
-                    """  # noqa: S608
-                ),
+                    """),  # noqa: S608
                 {
                     "profile": _serialize_profile_to_pickle(row["profile"]),
                     "date": row["date"],

@@ -1,6 +1,6 @@
 """SQLAlchemy entity models and shared constants for hacklog."""
 
-from datetime import date, datetime
+from datetime import datetime
 from enum import IntEnum
 from typing import Any
 
@@ -12,6 +12,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
+
 
 MutableProfile = MutableDict.as_mutable(JSON)
 
@@ -36,7 +37,7 @@ class Threshold(IntEnum):
 
 def create_db_engine(server: Any) -> Engine:
     """Create and return the SQLAlchemy engine for the configured database file."""
-    return create_engine("sqlite:///" + server.dbFile)
+    return create_engine("sqlite:///" + server.db_file)
 
 
 def create_tables(engine: Engine) -> None:
@@ -49,7 +50,7 @@ class EventLog(Base):
 
     date = Column("date", DateTime, primary_key=True)
     username = Column("username", String, primary_key=True)
-    ipAddress = Column("ipAddress", String)
+    ip_address = Column("ipAddress", String)
     success = Column("success", Boolean)
     server = Column("server", String)
 
@@ -57,13 +58,13 @@ class EventLog(Base):
         self,
         date: datetime,
         username: str,
-        ipAddress: str,
+        ip_address: str,
         success: bool,
         server: str,
     ) -> None:
         self.date = date
         self.username = username
-        self.ipAddress = ipAddress
+        self.ip_address = ip_address
         self.success = success
         self.server = server
 
@@ -74,15 +75,15 @@ class User(Base):
     username = Column("username", String, primary_key=True)
     date = Column("date", DateTime)
     score = Column("score", Integer)
-    scareCount = Column("scareCount", Integer)
-    lastScareDate = Column("lastScareDate", DateTime)
+    scare_count = Column("scareCount", Integer)
+    last_scare_date = Column("lastScareDate", DateTime)
 
     def __init__(self, username: str, date: datetime, score: int) -> None:
         self.username = username
         self.date = date
         self.score = score
-        self.scareCount = 0
-        self.lastScareDate = date.today()
+        self.scare_count = 0
+        self.last_scare_date = date.today()
 
 
 class Days(Base):
@@ -91,19 +92,19 @@ class Days(Base):
     date = Column("date", DateTime, primary_key=True)
     username = Column("username", String, primary_key=True)
     profile = Column("profile", MutableProfile)
-    totalCount = Column("totalCount", Integer)
+    total_count = Column("totalCount", Integer)
 
     def __init__(
         self,
         date: datetime,
         username: str,
         profile: dict[str, int],
-        totalCount: int,
+        total_count: int,
     ) -> None:
         self.date = date
         self.username = username
         self.profile = profile
-        self.totalCount = totalCount
+        self.total_count = total_count
 
 
 class Hours(Base):
@@ -112,40 +113,40 @@ class Hours(Base):
     date = Column("date", DateTime, primary_key=True)
     username = Column("username", String, primary_key=True)
     profile = Column("profile", MutableProfile)
-    totalCount = Column("totalCount", Integer)
+    total_count = Column("totalCount", Integer)
 
     def __init__(
         self,
         date: datetime,
         username: str,
         profile: dict[str, int],
-        totalCount: int,
+        total_count: int,
     ) -> None:
         self.date = date
         self.username = username
         self.profile = profile
-        self.totalCount = totalCount
+        self.total_count = total_count
 
 
-class Servers(Base):
-    __tablename__ = "servers"
+class Server(Base):
+    __tablename__ = "server"
 
     date = Column("date", DateTime, primary_key=True)
     username = Column("username", String, primary_key=True)
     profile = Column("profile", MutableProfile)
-    totalCount = Column("totalCount", Integer)
+    total_count = Column("totalCount", Integer)
 
     def __init__(
         self,
         date: datetime,
         username: str,
         profile: dict[str, int],
-        totalCount: int,
+        total_count: int,
     ) -> None:
         self.date = date
         self.username = username
         self.profile = profile
-        self.totalCount = totalCount
+        self.total_count = total_count
 
 
 class IpAddress(Base):
@@ -154,27 +155,27 @@ class IpAddress(Base):
     date = Column("date", DateTime, primary_key=True)
     username = Column("username", String, primary_key=True)
     profile = Column("profile", MutableProfile)
-    totalCount = Column("totalCount", Integer)
+    total_count = Column("totalCount", Integer)
 
     def __init__(
         self,
         date: datetime,
         username: str,
         profile: dict[str, int],
-        totalCount: int,
+        total_count: int,
     ) -> None:
         self.date = date
         self.username = username
         self.profile = profile
-        self.totalCount = totalCount
+        self.total_count = total_count
 
     @staticmethod
-    def checkIpForVpn(ip: str) -> bool:
+    def check_ip_for_vpn(ip: str) -> bool:
         quadrant_list = ip.split(".")
         return quadrant_list[0] == "10" and quadrant_list[1] == "42"
 
     @staticmethod
-    def checkIpForInternal(ip: str) -> bool:
+    def check_ip_for_internal(ip: str) -> bool:
         quadrant_list = ip.split(".")
         if quadrant_list[0] == "10":
             if quadrant_list[1] == "24" or quadrant_list[1] == "26":
@@ -193,5 +194,5 @@ class SyslogMsg:
 
 
 class MailConf:
-    def __init__(self, emailTest: bool = False) -> None:
-        self.emailTest = emailTest
+    def __init__(self, email_test: bool = False) -> None:
+        self.email_test = email_test

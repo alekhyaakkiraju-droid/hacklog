@@ -16,15 +16,29 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from entities import Days, EventLog, Hours, IpAddress, Servers, User, create_tables  # noqa: E402
-from repositories import AuditRepository, ProfileRepository, UserRepository  # noqa: E402
+from entities import (  # noqa: E402
+    Days,
+    EventLog,
+    Hours,
+    IpAddress,
+    Server,
+    User,
+    create_tables,
+)
+from repositories import (  # noqa: E402
+    AuditRepository,
+    ProfileRepository,
+    UserRepository,
+)
 
 
 @pytest.fixture
 def session_factory(tmp_path: Path):
     engine = create_engine(f"sqlite:///{tmp_path / 'repos.db'}")
     create_tables(engine)
-    factory = sessionmaker(bind=engine, autoflush=True, autocommit=False, expire_on_commit=False)
+    factory = sessionmaker(
+        bind=engine, autoflush=True, autocommit=False, expire_on_commit=False
+    )
     yield factory
     engine.dispose()
 
@@ -49,7 +63,7 @@ def audit_repository(session_factory) -> AuditRepository:
     [
         (Days, "days-user"),
         (Hours, "hours-user"),
-        (Servers, "servers-user"),
+        (Server, "servers-user"),
         (IpAddress, "ip-user"),
     ],
 )
@@ -60,7 +74,7 @@ def test_profile_repository_crud(entity_cls, username, profile_repository) -> No
     assert loaded is not None
     assert loaded.username == username
     loaded.profile = {"Mon": 2, "Tue": 1}
-    loaded.totalCount = 3
+    loaded.total_count = 3
     profile_repository.update_profile(loaded)
     reloaded = profile_repository.get_profile(entity_cls, username)
     assert reloaded is not None
@@ -78,7 +92,7 @@ def test_user_repository_crud(user_repository) -> None:
     final = user_repository.get_by_username("repo-user")
     assert final is not None
     assert final.score == 42
-    assert final.scareCount == 0
+    assert final.scare_count == 0
 
 
 def test_audit_repository_append_only(audit_repository, session_factory) -> None:
@@ -94,14 +108,18 @@ def test_transaction_rolls_back_on_failure(profile_repository, session_factory) 
     profile_repository.save_profile(profile)
 
     class BrokenProfileRepository(ProfileRepository):
-        def save_profile(self, profile: Days | Hours | Servers | IpAddress) -> None:
+        def save_profile(self, profile: Days | Hours | Server | IpAddress) -> None:
             with self.transaction() as session:
-                session.add(Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1))
+                session.add(
+                    Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1)
+                )
                 raise RuntimeError("forced failure")
 
     broken = BrokenProfileRepository(session_factory)
     with pytest.raises(RuntimeError):
-        broken.save_profile(Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1))
+        broken.save_profile(
+            Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1)
+        )
 
     assert profile_repository.get_profile(Hours, "rollback-user") is None
     assert profile_repository.get_profile(Days, "rollback-user") is not None

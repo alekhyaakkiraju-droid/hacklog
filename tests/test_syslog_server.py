@@ -13,7 +13,11 @@ import pytest
 from hacklog.entities import SyslogMsg
 from hacklog.metrics import messages_dropped_total
 from hacklog.security import IpAllowlist, MessageValidator, RateLimiter
-from hacklog.syslog_server import SyslogProtocol, message_consumer, run_async_syslog_server
+from hacklog.syslog_server import (
+    SyslogProtocol,
+    message_consumer,
+    run_async_syslog_server,
+)
 
 
 def _validator(
@@ -83,9 +87,13 @@ async def test_datagram_received_drops_when_queue_full() -> None:
     queue.put_nowait(SyslogMsg("existing", "127.0.0.1", 1))
     protocol = SyslogProtocol(queue, _validator(), accepting=lambda: True)
 
-    before = messages_dropped_total.labels(reason="queue_full")._value.get()  # noqa: SLF001
+    before = messages_dropped_total.labels(
+        reason="queue_full"
+    )._value.get()  # noqa: SLF001
     protocol.datagram_received(b"overflow", ("127.0.0.1", 9000))
-    after = messages_dropped_total.labels(reason="queue_full")._value.get()  # noqa: SLF001
+    after = messages_dropped_total.labels(
+        reason="queue_full"
+    )._value.get()  # noqa: SLF001
     assert after - before == 1.0
     assert queue.qsize() == 1
 
@@ -94,7 +102,7 @@ async def test_datagram_received_drops_when_queue_full() -> None:
 async def test_message_consumer_processes_enqueued_messages() -> None:
     queue: asyncio.Queue = asyncio.Queue(maxsize=10)
     parser = MagicMock()
-    parser.parseLogLine.return_value = object()
+    parser.parse_log_line.return_value = object()
     processed: list[object] = []
 
     queue.put_nowait(SyslogMsg("payload", "127.0.0.1", 42))
@@ -115,7 +123,7 @@ async def test_message_consumer_processes_enqueued_messages() -> None:
     await task
 
     assert len(processed) == 1
-    parser.parseLogLine.assert_called_once()
+    parser.parse_log_line.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -130,7 +138,9 @@ async def test_udp_integration_receives_datagram_via_asyncio_server() -> None:
             ready.set()
 
     transport, _protocol = await loop.create_datagram_endpoint(
-        lambda: _TestProtocol(queue, _validator(cidrs=["127.0.0.0/8"]), accepting=lambda: True),
+        lambda: _TestProtocol(
+            queue, _validator(cidrs=["127.0.0.0/8"]), accepting=lambda: True
+        ),
         local_addr=("127.0.0.1", 0),
     )
     await ready.wait()
@@ -147,17 +157,21 @@ async def test_udp_integration_receives_datagram_via_asyncio_server() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_async_syslog_server_graceful_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_async_syslog_server_graceful_shutdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     loop = asyncio.get_running_loop()
     shutdown_callbacks: list[Callable[[], None]] = []
 
-    def capture_signal_handler(sig: signal.Signals, callback: Callable[[], None]) -> None:
+    def capture_signal_handler(
+        sig: signal.Signals, callback: Callable[[], None]
+    ) -> None:
         shutdown_callbacks.append(callback)
 
     monkeypatch.setattr(loop, "add_signal_handler", capture_signal_handler)
 
     parser = MagicMock()
-    parser.parseLogLine.return_value = None
+    parser.parse_log_line.return_value = None
 
     server_task = asyncio.create_task(
         run_async_syslog_server(
@@ -182,9 +196,7 @@ async def test_end_to_end_udp_parse_and_process_wo002_corpus() -> None:
     from entities import EventLog
     from parse import Parser
 
-    wo002_line = (
-        b"<14>sshd[3070]: Accepted publickey for kantselovich from 10.42.10.2 port 2005 ssh2"
-    )
+    wo002_line = b"<14>sshd[3070]: Accepted publickey for kantselovich from 10.42.10.2 port 2005 ssh2"
     parser = Parser()
     processed: list[object] = []
     loop = asyncio.get_running_loop()

@@ -25,7 +25,9 @@ def reset_logging() -> None:
     structlog.reset_defaults()
 
 
-def test_structlog_configuration_produces_valid_json(capsys: pytest.CaptureFixture[str]) -> None:
+def test_structlog_configuration_produces_valid_json(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     configure_logging(level=logging.INFO)
     logger = get_logger("test")
     logger.info("configuration_check", operation="validate_json")
