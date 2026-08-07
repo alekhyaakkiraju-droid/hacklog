@@ -42,3 +42,10 @@
 - **Files:** 1 (+77/-110)
 - **Duration:** 385ss
 - **Approach:** Rewrote hacklog.spec to target Python 3.12 and the pyproject.toml/hatchling build system. Removed all Python 2.6 conditional blocks, distutils.sysconfig references, and setup.py invocations. Replaced with pip install --no-build-isolation, updated BuildRequires/Requires to match pyproject.toml dependencies, switched service management from init.d to the systemd unit in deploy/hacklog.service using standard RPM systemd macros. include_tests stays 0 so tests never run at build time; the %check block is kept but guarded behind the flag so CI can re-enable it trivially.
+
+## WO-032: User Story: WO-032 - Support configurable parser test/production modes with externalized regex patterns
+- **Status:** completed
+- **Commit:** `f163f9b`
+- **Files:** 3 (+14/-9)
+- **Duration:** 584ss
+- **Approach:** Three targeted fixes to wire configurable parser patterns end-to-end. (1) _build_parser() in SyslogServer was rewritten to unconditionally pass success_pattern, failure_pattern, and test_enabled to Parser, removing the test-only guard that silently discarded production config patterns. (2) parse_config() was updated to strip surrounding quote characters from pattern values returned by configparser.get(), preventing literal quote characters from breaking compiled regex. (3) parse_test.py was updated to pass test_enabled=_server.test_enabled to the Parser constructor so the test harness respects the flag read from serverTest.conf. The config file itself had its quoted patterns unquoted since configparser already returns the raw string value.

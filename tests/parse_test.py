@@ -31,7 +31,7 @@ else:
     _success_pattern = None
     _failure_pattern = None
 
-_parser = Parser(_success_pattern, _failure_pattern)
+_parser = Parser(_success_pattern, _failure_pattern, test_enabled=_server.test_enabled)
 
 class ParserTests(unittest.TestCase):
     def test_starting_out(self):
