@@ -12,9 +12,7 @@ from setuptools import setup, Command
 
 #FIXME:  mockito really should not be there, however it does not get installed as test dependecy when added to 'tests_require'
 install_requires = [
-  'twisted',
   'SQLAlchemy',
-  'mockito',
   ]
 
 tests_require = [

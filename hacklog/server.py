@@ -1,25 +1,21 @@
-"""Twisted-based syslog UDP server."""
+"""Hacklog syslog server entrypoint."""
 
+import asyncio
 import configparser
-import queue
-import signal
-import threading
 
 import algorithm
 from config import load_config_or_exit
-from entities import SyslogMsg, create_db_engine, create_tables
+from entities import create_db_engine, create_tables
 from logging_config import configure_logging, get_logger
 from optparse import OptionParser
 from parse import Parser
-from twisted.internet import reactor
-from twisted.internet.protocol import DatagramProtocol
+from syslog_server import run_async_syslog_server
 
-message_queue: queue.Queue[SyslogMsg] = queue.Queue()
 logger = get_logger("server")
 
 
 class SyslogServer:
-    """Syslog server based on twisted library."""
+    """Syslog server orchestrating config, parsing, and asyncio UDP ingestion."""
 
     def __init__(self) -> None:
         self.dbFile = "hacklog.db"
@@ -27,7 +23,6 @@ class SyslogServer:
         self.bind_address = "127.0.0.1"
         self.config_file = "../conf/server.conf"
         self.loglevel = 10
-        self.running = True
         self.usage = "usage: %prog -c config_file"
         self.testEnabled = False
         self.emailTest = False
@@ -69,45 +64,27 @@ class SyslogServer:
     def setLogging(self) -> None:
         configure_logging(level=self.loglevel)
 
-    def interrupt(self, signum: int, stackframe: object) -> None:
-        logger.debug("signal_received", operation="handle_signal", signal=signum)
-        self.running = False
-        message_queue.put(SyslogMsg())
-        self.stop()
-
-    def messageParcer(self) -> None:
-        logger.debug(
-            "parser_thread_started",
-            operation="message_parser_start",
-            thread_id=threading.get_ident(),
-        )
+    def _build_parser(self) -> Parser:
         if self.testEnabled:
-            parser = Parser(self.successPattern, self.failurePattern, self.testEnabled)
-        else:
-            parser = Parser()
-
-        while self.running:
-            msg = message_queue.get()
-            event_log = parser.parseLogLine(msg)
-            if event_log:
-                algorithm.processEventLog(event_log)
-                logger.debug(
-                    "message_processed",
-                    operation="process_message",
-                    queue_size=message_queue.qsize(),
-                    source_host=msg.host,
-                    source_port=msg.port,
-                )
-
-    def cleanupThread(self) -> None:
-        thread_pool = reactor.getThreadPool()
-        thread_pool.stop()
+            return Parser(self.successPattern, self.failurePattern, self.testEnabled)
+        return Parser()
 
     def run(self) -> None:
-        signal.signal(signal.SIGINT, self.interrupt)
-        reactor.callInThread(self.messageParcer)
-        reactor.listenUDP(self.port, SyslogReader())
-        reactor.run()
+        app_config = load_config_or_exit()
+        syslog = app_config.syslog
+        bind_address = self.bind_address or syslog.bind_address
+        port = self.port or syslog.port
+        parser = self._build_parser()
+
+        asyncio.run(
+            run_async_syslog_server(
+                bind_address=bind_address,
+                port=port,
+                parser=parser,
+                process_event=algorithm.processEventLog,
+                syslog_config=syslog,
+            )
+        )
 
     def start(self) -> None:
         self.readCmdArgs()
@@ -118,24 +95,6 @@ class SyslogServer:
         create_db_engine(self)
         create_tables()
         self.run()
-
-    def stop(self) -> None:
-        reactor.stop()
-
-
-class SyslogReader(DatagramProtocol):
-    def datagramReceived(self, data: bytes, addr: tuple[str, int]) -> None:
-        host, port = addr
-        text = data.decode("utf-8", errors="replace")
-        logger.info(
-            "message_received",
-            operation="receive_datagram",
-            source_ip=host,
-            source_port=port,
-            message_size=len(data),
-        )
-        syslog_msg = SyslogMsg(text, host, port)
-        message_queue.put(syslog_msg)
 
 
 def main() -> None:
