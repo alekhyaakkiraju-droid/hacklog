@@ -19,7 +19,10 @@ USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 HOSTNAME_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("sql_injection", re.compile(r"(?i)(?:;\s*drop\s+table|'\s*or\s+'1'\s*=\s*'1|union\s+select)")),
+    (
+        "sql_injection",
+        re.compile(r"(?i)(?:;\s*drop\s+table|'\s*or\s+'1'\s*=\s*'1|union\s+select)"),
+    ),
     ("shell_injection", re.compile(r"\$\(|`|\|\|")),
     ("ldap_injection", re.compile(r"\*\)|\(\||\*\(\|")),
 )
@@ -105,9 +108,11 @@ def validate_parsed_fields(
         if result.valid:
             continue
         if meter_and_log:
-            field_value = {"username": username, "ip_address": ip_address, "hostname": hostname}[
-                result.field_name
-            ]
+            field_value = {
+                "username": username,
+                "ip_address": ip_address,
+                "hostname": hostname,
+            }[result.field_name]
             messages_dropped_total.labels(reason="invalid_field").inc()
             logger.warning(
                 "parsed_field_rejected",

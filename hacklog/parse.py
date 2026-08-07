@@ -109,5 +109,11 @@ class Parser:
             return_event = False
 
         if return_event:
+            if self.validate_fields and not validate_parsed_fields(
+                return_event.username,
+                return_event.ip_address,
+                return_event.server,
+            ):
+                return None
             return return_event
         return None
