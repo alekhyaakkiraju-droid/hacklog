@@ -72,3 +72,57 @@ def test_calculate_success_score_success_is_zero(event_log) -> None:
     alert_service = MagicMock()
     engine = ScoringEngine(update_service, alert_service)
     assert engine.calculate_success_score(event_log.success) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scare count reset: negative and positive timeDiff (WO-033)
+# ---------------------------------------------------------------------------
+
+def test_scare_count_reset_when_event_timestamp_is_older_than_last_scare_date(
+    mock_services,
+) -> None:
+    """Negative timeDiff (event before last_scare_date) must still trigger reset via abs()."""
+    update_service, alert_service, user = mock_services
+    user.scare_count = 1
+    user.last_scare_date = datetime(2026, 8, 1)
+    # event date is months BEFORE last_scare_date → timeDiff.days is negative
+    old_event = EventLog(datetime(2026, 1, 1), "nrhine", "10.42.10.2", True, "prod-host")
+
+    engine = ScoringEngine(update_service, alert_service)
+    engine.calculate_new_score = MagicMock(return_value=(5, {}))  # type: ignore[method-assign]
+    engine.process_event_log(old_event)
+
+    update_service.reset_user_scare_count.assert_called_once_with(user)
+
+
+def test_scare_count_reset_when_event_timestamp_is_newer_than_last_scare_date(
+    mock_services,
+) -> None:
+    """Positive timeDiff (event after last_scare_date) triggers reset when abs days >= expire."""
+    update_service, alert_service, user = mock_services
+    user.scare_count = 1
+    user.last_scare_date = datetime(2026, 1, 1)
+    # event date is months AFTER last_scare_date → timeDiff.days is positive
+    new_event = EventLog(datetime(2026, 8, 7), "nrhine", "10.42.10.2", True, "prod-host")
+
+    engine = ScoringEngine(update_service, alert_service)
+    engine.calculate_new_score = MagicMock(return_value=(5, {}))  # type: ignore[method-assign]
+    engine.process_event_log(new_event)
+
+    update_service.reset_user_scare_count.assert_called_once_with(user)
+
+
+def test_scare_count_not_reset_when_same_day_event(mock_services) -> None:
+    """Scare count is not reset when abs(timeDiff.days) < scare_date_expire_days (default 1)."""
+    update_service, alert_service, user = mock_services
+    user.scare_count = 1
+    user.last_scare_date = datetime(2026, 1, 15, 10, 0, 0)  # same day as event
+    same_day_event = EventLog(
+        datetime(2026, 1, 15, 12, 0, 0), "nrhine", "10.42.10.2", True, "prod-host"
+    )
+
+    engine = ScoringEngine(update_service, alert_service)
+    engine.calculate_new_score = MagicMock(return_value=(5, {}))  # type: ignore[method-assign]
+    engine.process_event_log(same_day_event)
+
+    update_service.reset_user_scare_count.assert_not_called()

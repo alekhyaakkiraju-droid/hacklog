@@ -28,3 +28,31 @@
 - **Files:** 3 (+773/-0)
 - **Duration:** 502ss
 - **Approach:** Added RetentionConfig Pydantic model to config.py with event_retention_days (default 365), profile_inactivity_days (default 180), purge_schedule_hour (default 2), and purge_batch_size (default 1000) — loaded from HACKLOG_EVENT_RETENTION_DAYS and HACKLOG_PROFILE_INACTIVITY_DAYS env vars via _RetentionSettings. Wired into ConfigManager.retention and load_config. Created hacklog/retention.py with DataRetentionService: purge_event_logs() uses batched SELECT LIMIT + DELETE IN to physically delete old EventLog records; purge_inactive_profiles() finds users whose max activity date across all tables (EventLog, Days, Hours, Server, IpAddress) falls before the inactivity cutoff, then physically deletes all their records; run_purge() orchestrates both; schedule_daily_purge() is an async scheduler that sleeps until the configured UTC hour daily and invokes run_purge via asyncio.to_thread. Both purge operations emit structlog entries with audit=True and optionally persist AuditRecord via the injected AuditRepository from WO-025. Created 17 tests covering boundary conditions, batch processing, idempotency, audit record creation, config defaults/env overrides, full pipeline integration, and async scheduler smoke test.
+
+## WO-030: User Story: WO-030 - Implement configurable scoring parameters at runtime
+- **Status:** completed
+- **Commit:** `067cbd5`
+- **Files:** 3 (+534/-18)
+- **Duration:** 463ss
+- **Approach:** Wired ScoringEngine to read all scoring weights and thresholds from ScoringConfig (already defined in config.py from WO-005). Added a `config: ScoringConfig | None = None` parameter to ScoringEngine.__init__ that defaults to ScoringConfig() when not provided. Replaced all Weight.* references with self.config.*_weight and all Threshold.* references with self.config.*_threshold/limit. Converted calculate_success_score and calculate_ip_location_score from @staticmethod to instance methods so they can access self.config. Removed now-unused Weight and Threshold imports from scoring.py. Expanded .env.example scoring section with full per-parameter documentation (purpose, valid range, impact, default). Created tests/test_scoring_config.py with golden-value tests, custom-threshold alert tests, weight-doubling tests, and boundary condition tests.
+
+## WO-031: User Story: WO-031 - Maintain and modernize RPM spec packaging configuration
+- **Status:** completed
+- **Commit:** `fa04fd8`
+- **Files:** 1 (+77/-110)
+- **Duration:** 385ss
+- **Approach:** Rewrote hacklog.spec to target Python 3.12 and the pyproject.toml/hatchling build system. Removed all Python 2.6 conditional blocks, distutils.sysconfig references, and setup.py invocations. Replaced with pip install --no-build-isolation, updated BuildRequires/Requires to match pyproject.toml dependencies, switched service management from init.d to the systemd unit in deploy/hacklog.service using standard RPM systemd macros. include_tests stays 0 so tests never run at build time; the %check block is kept but guarded behind the flag so CI can re-enable it trivially.
+
+## WO-032: User Story: WO-032 - Support configurable parser test/production modes with externalized regex patterns
+- **Status:** completed
+- **Commit:** `f163f9b`
+- **Files:** 3 (+14/-9)
+- **Duration:** 584ss
+- **Approach:** Three targeted fixes to wire configurable parser patterns end-to-end. (1) _build_parser() in SyslogServer was rewritten to unconditionally pass success_pattern, failure_pattern, and test_enabled to Parser, removing the test-only guard that silently discarded production config patterns. (2) parse_config() was updated to strip surrounding quote characters from pattern values returned by configparser.get(), preventing literal quote characters from breaking compiled regex. (3) parse_test.py was updated to pass test_enabled=_server.test_enabled to the Parser constructor so the test harness respects the flag read from serverTest.conf. The config file itself had its quoted patterns unquoted since configparser already returns the raw string value.
+
+## WO-033: User Story: WO-033 - Fix scoring algorithm scare count reset for negative time differences
+- **Status:** completed
+- **Commit:** `fe51a7a`
+- **Files:** 1 (+54/-0)
+- **Duration:** 260ss
+- **Approach:** Criterion 1 (abs() on timeDiff.days) and criterion 4 (structlog logging) were already satisfied in scoring.py from prior work. The gap was criteria 2 and 3: no tests covered the negative timeDiff scenario. Added three unit tests to test_scoring_engine.py using mocked services and calculate_new_score to isolate the scare-count reset branch: one tests a historical event (event date before last_scare_date → negative days), one tests the normal forward-time case (positive days), and one verifies the reset is NOT triggered when the event is on the same day (abs(days) < expire threshold).

@@ -48,6 +48,9 @@ dev = [
   "types-PyYAML",
 ]
 
+[project.scripts]
+hacklog = "hacklog.server:main"
+
 [project.urls]
 Homepage = "https://github.com/dandb/hacklog"
 Repository = "https://github.com/dandb/hacklog"

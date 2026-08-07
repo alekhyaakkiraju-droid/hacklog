@@ -49,9 +49,13 @@ class SyslogServer:
         if config.has_option("Parse", "test_enabled"):
             self.test_enabled = config.getboolean("Parse", "test_enabled")
         if config.has_option("Parse", "success_pattern"):
-            self.success_pattern = config.get("Parse", "success_pattern")
+            val = config.get("Parse", "success_pattern").strip().strip("'\"")
+            if val:
+                self.success_pattern = val
         if config.has_option("Parse", "failure_pattern"):
-            self.failure_pattern = config.get("Parse", "failure_pattern")
+            val = config.get("Parse", "failure_pattern").strip().strip("'\"")
+            if val:
+                self.failure_pattern = val
 
     def read_cmd_args(self) -> None:
         cmd_parser = OptionParser(usage=self.usage)
@@ -70,9 +74,11 @@ class SyslogServer:
         configure_logging(level=self.loglevel)
 
     def _build_parser(self) -> Parser:
-        if self.test_enabled:
-            return Parser(self.success_pattern, self.failure_pattern, self.test_enabled)
-        return Parser()
+        return Parser(
+            self.success_pattern,
+            self.failure_pattern,
+            self.test_enabled,
+        )
 
     def run(self) -> None:
         if self.scoring_engine is None:
