@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hacklog"
+version = "0.0.5"
+description = "Syslog server for detection of compromised user accounts by applying statistical analysis to server authentication logs"
+readme = "README.md"
+license = "GPL-3.0"
+requires-python = ">=3.12"
+authors = [
+  { name = "DandB Hackweek Team - Hackling Ouliers", email = "hacklog@dandb.com" },
+]
+keywords = ["hacking", "security", "logs", "syslog", "outliers", "statistical analysis"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Topic :: Internet :: Log Analysis",
+  "Topic :: System :: Logging",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "sqlalchemy>=2.0",
+  "aiosmtplib",
+  "pydantic-settings",
+  "structlog",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "hypothesis",
+  "coverage",
+]
+
+[project.urls]
+Homepage = "https://github.com/dandb/hacklog"
+Repository = "https://github.com/dandb/hacklog"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hacklog"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+disallow_untyped_defs = true
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
