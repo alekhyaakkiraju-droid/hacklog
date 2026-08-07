@@ -58,7 +58,7 @@ def test_process_event_log_audits_and_updates_score(mock_services, event_log) ->
 def test_critical_score_triggers_alert(mock_services, event_log) -> None:
     update_service, alert_service, user = mock_services
     engine = ScoringEngine(update_service, alert_service)
-    engine.calculate_new_score = MagicMock(return_value=Threshold.CRITICAL + 1)  # type: ignore[method-assign]
+    engine.calculate_new_score = MagicMock(return_value=(Threshold.CRITICAL + 1, {}))  # type: ignore[method-assign]
     engine.process_event_log(event_log)
     alert_service.send_email_alert.assert_called_once_with(user, event_log)
 
