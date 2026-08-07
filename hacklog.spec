@@ -1,143 +1,110 @@
-%if ! (0%{?rhel} >= 6 || 0%{?fedora} > 12)
-%global with_python26 1
-%define pybasever 2.6
-%define __python_ver 26
-%define __python %{_bindir}/python%{?pybasever}
-%endif
-
 %global include_tests 0
 
-%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-%{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-%{!?pythonpath: %global pythonpath %(%{__python} -c "import os, sys; print(os.pathsep.join(sys.path))")}
-
-Name: hacklog
+Name:    hacklog
 Version: 0.0.5
 Release: 1%{?dist}
-Summary: Hacklog Server
+Summary: Hacklog Security Scoring Daemon
 
-Group:   System Environment/Daemons
 License: GPLv3
 URL:     https://github.com/dandb/hacklog/
 Source0: https://github.com/dandb/%{name}/archive/%{name}-%{version}.tar.gz
 
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-
 BuildArch: noarch
 
-Requires: python-sqlalchemy
+# ── Build requirements ────────────────────────────────────────────────────────
+BuildRequires: python3 >= 3.12
+BuildRequires: python3-pip
+BuildRequires: python3-hatchling
 
-%if 0%{?with_python26}
-BuildRequires: python26-sqlalchemy
-BuildRequires: python26-setuptools
+# ── Runtime requirements (mirrors pyproject.toml dependencies) ───────────────
+Requires: python3 >= 3.12
+Requires: python3-sqlalchemy >= 2.0
+Requires: python3-alembic >= 1.13
+Requires: python3-pydantic-settings
+Requires: python3-aiosmtplib
+Requires: python3-structlog
+Requires: python3-pyyaml >= 6.0
+Requires: python3-prometheus_client >= 0.20
 
-Requires: python26-sqlalchemy
-
-%else
-
-%if ((0%{?rhel} >= 6 || 0%{?fedora} > 12) && 0%{?include_tests})
-BuildRequires: python-sqlalchemy
-BuildRequires: python-setuptools
-%endif
-
-
-%if ! (0%{?rhel} >= 7 || 0%{?fedora} >= 15)
-Requires(post): chkconfig
-Requires(preun): chkconfig
-Requires(preun): initscripts
-Requires(postun): initscripts
-
-%else
-%if 0%{?systemd_preun:1}
-
-Requires(post): systemd-units
-Requires(preun): systemd-units
-Requires(postun): systemd-units
-
-%endif
-
-%endif
-
-%endif
+# ── Systemd integration ───────────────────────────────────────────────────────
+Requires(post):   systemd
+Requires(preun):  systemd
+Requires(postun): systemd
 
 %description
-Hacklog is a system daemon that that detect compromised user accounts
-by applying statical analysis to auth,authpriv log events.
-It was created by "Hacking Outliers" project during Q4 2013
-hackweek at Dun & Bradstreet Credibility Corp.
+Hacklog is a syslog-based user behaviour analytics daemon that ingests SSH
+authentication events, builds per-user behavioural profiles, calculates
+weighted anomaly risk scores, and sends email alerts when scores exceed
+configurable thresholds.
+
+Originally created during Q4 2013 hackweek at Dun & Bradstreet Credibility Corp.
 
 
 %prep
 %setup -c
-#%setup -T -D -a 1
 
 %build
+# pyproject.toml / hatchling-based build; no compilation step required.
 
 %install
-rm -rf $RPM_BUILD_ROOT
-cd $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}
-%{__python} setup.py install -O1 --root $RPM_BUILD_ROOT
+rm -rf %{buildroot}
+cd %{_builddir}/%{name}-%{version}/%{name}-%{version}
 
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/%{name}/
-mkdir -p $RPM_BUILD_ROOT%{_bindir}
-mkdir -p $RPM_BUILD_ROOT%{_initrddir}
-install -p -m 0640 conf/server.conf $RPM_BUILD_ROOT%{_sysconfdir}/%{name}/server.conf
-install -p -m 0755 bin/%{name} $RPM_BUILD_ROOT%{_bindir}/%{name}
-install -p -m 0755 scripts/%{name}.init.d $RPM_BUILD_ROOT%{_initrddir}/%{name}
+# Install the package into the build root using pip in isolated mode so the
+# hatchling build backend from the source tree is used without touching the
+# system Python environment.
+pip install --no-build-isolation --no-deps \
+    --root %{buildroot} \
+    --prefix %{_prefix} \
+    .
 
-%if ((0%{?rhel} >= 6 || 0%{?fedora} > 12) && 0%{?include_tests})
+# Configuration directory and environment template
+mkdir -p %{buildroot}%{_sysconfdir}/%{name}
+install -p -m 0640 deploy/hacklog.env.example \
+    %{buildroot}%{_sysconfdir}/%{name}/hacklog.env.example
+
+# Systemd service unit
+mkdir -p %{buildroot}%{_unitdir}
+install -p -m 0644 deploy/hacklog.service \
+    %{buildroot}%{_unitdir}/%{name}.service
+
+# Tests are intentionally not run during RPM build (include_tests=0).
+# Run the test suite via CI: python3 -m pytest tests/
+%if 0%{?include_tests}
 %check
-cd $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}
-PYTHONPATH=%{pythonpath}:$RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version} %{__python} setup.py test
+cd %{_builddir}/%{name}-%{version}/%{name}-%{version}
+python3 -m pytest tests/
 %endif
 
 %clean
-rm -rf $RPM_BUILD_ROOT
+rm -rf %{buildroot}
+
+%post
+%systemd_post %{name}.service
+
+%preun
+%systemd_preun %{name}.service
+
+%postun
+%systemd_postun_with_restart %{name}.service
 
 %files
-%defattr(-,root,root,-)
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/README.md
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/CHANGES
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/LICENSE
-%{python_sitelib}/%{name}
-%{python_sitelib}/%{name}-%{version}-py?.?.egg-info
-
-%files -n hacklog
-%defattr(-,root,root)
-%{_bindir}/%{name}
-%if ! (0%{?rhel} >= 7 || 0%{?fedora} >= 15)
-%attr(0755, root, root) %{_initrddir}/%{name}
-%else
+%license LICENSE
+%doc README.md CHANGES
+%{python3_sitelib}/%{name}/
+%{python3_sitelib}/%{name}-%{version}.dist-info/
 %{_unitdir}/%{name}.service
-%endif
-%config(noreplace) %{_sysconfdir}/hacklog/server.conf
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/README.md
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/CHANGES
-%doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/LICENSE
-%{python_sitelib}/%{name}
-%{python_sitelib}/%{name}-%{version}-py?.?.egg-info
-
-# less than RHEL 8 / Fedora 16
-# not sure if RHEL 7 will use systemd yet
-%if ! (0%{?rhel} >= 7 || 0%{?fedora} >= 15)
-
-%preun -n hacklog
-  if [ $1 -eq 0 ] ; then
-      /sbin/service hacklog stop >/dev/null 2>&1
-      /sbin/chkconfig --del hacklog
-  fi
-
-%post -n hacklog
-  /sbin/chkconfig --add hacklog
-
-%postun -n hacklog
-  if [ "$1" -ge "1" ] ; then
-      /sbin/service hacklog restart >/dev/null 2>&1 || :
-
-  fi
-
-%endif
+%config(noreplace) %{_sysconfdir}/%{name}/hacklog.env.example
 
 %changelog
+* Thu Aug 07 2026 Forge Coding Agent <forge@dandb.com> - 0.0.5-1
+- Modernize spec for Python 3.12 and pyproject.toml/hatchling build system
+- Replace setup.py install with pip install --no-build-isolation
+- Remove all Python 2.6 compatibility blocks and distutils references
+- Update BuildRequires and Requires to Python 3 packages matching pyproject.toml
+- Switch from SysV init.d script to systemd service unit (deploy/hacklog.service)
+- Use systemd RPM macros (%%systemd_post, %%systemd_preun, %%systemd_postun_with_restart)
+- Tests disabled at build time (include_tests=0); run via CI instead
+- Switch %%files to use %%{python3_sitelib} and PEP 660 dist-info directory
 * Thu Oct 10 2013 Konstantin Antselovich <kantselovich@dandb.com> - 0.1.0-1
 - First version of hacklog spec file 0.1.0

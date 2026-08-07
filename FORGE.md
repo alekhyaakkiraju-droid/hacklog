@@ -35,3 +35,10 @@
 - **Files:** 3 (+534/-18)
 - **Duration:** 463ss
 - **Approach:** Wired ScoringEngine to read all scoring weights and thresholds from ScoringConfig (already defined in config.py from WO-005). Added a `config: ScoringConfig | None = None` parameter to ScoringEngine.__init__ that defaults to ScoringConfig() when not provided. Replaced all Weight.* references with self.config.*_weight and all Threshold.* references with self.config.*_threshold/limit. Converted calculate_success_score and calculate_ip_location_score from @staticmethod to instance methods so they can access self.config. Removed now-unused Weight and Threshold imports from scoring.py. Expanded .env.example scoring section with full per-parameter documentation (purpose, valid range, impact, default). Created tests/test_scoring_config.py with golden-value tests, custom-threshold alert tests, weight-doubling tests, and boundary condition tests.
+
+## WO-031: User Story: WO-031 - Maintain and modernize RPM spec packaging configuration
+- **Status:** completed
+- **Commit:** `fa04fd8`
+- **Files:** 1 (+77/-110)
+- **Duration:** 385ss
+- **Approach:** Rewrote hacklog.spec to target Python 3.12 and the pyproject.toml/hatchling build system. Removed all Python 2.6 conditional blocks, distutils.sysconfig references, and setup.py invocations. Replaced with pip install --no-build-isolation, updated BuildRequires/Requires to match pyproject.toml dependencies, switched service management from init.d to the systemd unit in deploy/hacklog.service using standard RPM systemd macros. include_tests stays 0 so tests never run at build time; the %check block is kept but guarded behind the flag so CI can re-enable it trivially.
