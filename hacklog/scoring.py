@@ -5,7 +5,8 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from alerting import AlertService
-from entities import AuditRecord, EventLog, IpAddress, Threshold, User, Weight
+from config import ScoringConfig
+from entities import AuditRecord, EventLog, IpAddress, User
 from logging_config import get_logger
 from repositories import AuditRepository
 from services import UpdateService
@@ -20,10 +21,12 @@ class ScoringEngine:
         update_service: UpdateService,
         alert_service: AlertService,
         audit_repository: AuditRepository | None = None,
+        config: ScoringConfig | None = None,
     ) -> None:
         self._update_service = update_service
         self._alert_service = alert_service
         self._audit_repository = audit_repository
+        self.config = config if config is not None else ScoringConfig()
 
     def _emit_audit_record(
         self,
@@ -66,7 +69,7 @@ class ScoringEngine:
         user = self._update_service.fetch_user(event_log)
         time_diff = event_log.date - user.last_scare_date
         self._update_service.update_user_score(user, score)
-        if score > Threshold.CRITICAL:
+        if score > self.config.critical_threshold:
             self._emit_audit_record(
                 actor=event_log.username,
                 action="score_calculated",
@@ -76,8 +79,8 @@ class ScoringEngine:
                 details={**dimension_scores, "alert_decision": "alert_triggered"},
             )
             self.process_alert(user, event_log)
-        elif score > Threshold.SCARY:
-            if user.scare_count >= Threshold.SCARECOUNT:
+        elif score > self.config.scary_threshold:
+            if user.scare_count >= self.config.scare_count_limit:
                 self._emit_audit_record(
                     actor=event_log.username,
                     action="score_calculated",
@@ -104,7 +107,7 @@ class ScoringEngine:
                 resource=event_log.server,
                 outcome=str(user.scare_count),
             )
-        elif abs(time_diff.days) >= Threshold.SCAREDATEEXPIRE:
+        elif abs(time_diff.days) >= self.config.scare_date_expire_days:
             self._emit_audit_record(
                 actor=event_log.username,
                 action="score_calculated",
@@ -181,21 +184,21 @@ class ScoringEngine:
 
     def calculate_hours_score(self, event_log: EventLog) -> float:
         hour_freq = self._update_service.update_and_return_hour_freq_for_user(event_log)
-        return self.calculate_subscore(hour_freq) * Weight.HOURS
+        return self.calculate_subscore(hour_freq) * self.config.hours_weight
 
     def calculate_days_score(self, event_log: EventLog) -> float:
         day_freq = self._update_service.update_and_return_day_freq_for_user(event_log)
-        return self.calculate_subscore(day_freq) * Weight.DAYS
+        return self.calculate_subscore(day_freq) * self.config.days_weight
 
     def calculate_server_score(self, event_log: EventLog) -> float:
         server_freq = self._update_service.update_and_return_server_freq_for_user(
             event_log
         )
-        return self.calculate_subscore(server_freq) * Weight.SERVER
+        return self.calculate_subscore(server_freq) * self.config.server_weight
 
     def calculate_ip_score(self, event_log: EventLog) -> float:
         ip_freq = self._update_service.update_and_return_ip_freq_for_user(event_log)
-        return self.calculate_subscore(ip_freq) * Weight.IP
+        return self.calculate_subscore(ip_freq) * self.config.ip_weight
 
     @staticmethod
     def calculate_subscore(freq: float) -> float:
@@ -205,20 +208,18 @@ class ScoringEngine:
             return 100.0
         return float(subscore) / 100
 
-    @staticmethod
-    def calculate_success_score(success: bool) -> int:
-        success_score = Weight.SUCCESS
+    def calculate_success_score(self, success: bool) -> int:
+        success_score = self.config.success_weight
         if success:
             success_score = 0
         return int(success_score)
 
-    @staticmethod
-    def calculate_ip_location_score(ip_address: str) -> int:
-        ip_score = Weight.EXT
+    def calculate_ip_location_score(self, ip_address: str) -> int:
+        ip_score = self.config.external_weight
         if IpAddress.check_ip_for_vpn(ip_address):
-            ip_score = Weight.VPN
+            ip_score = self.config.vpn_weight
         if IpAddress.check_ip_for_internal(ip_address):
-            ip_score = Weight.INT
+            ip_score = self.config.internal_weight
         return int(ip_score)
 
 def smoke_test_process(
