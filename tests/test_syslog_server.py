@@ -225,3 +225,50 @@ async def test_end_to_end_udp_parse_and_process_wo002_corpus() -> None:
 
     assert len(processed) == 1
     assert isinstance(processed[0], EventLog)
+
+
+@pytest.mark.asyncio
+async def test_message_consumer_skips_none_parse_result() -> None:
+    """None from parse_log_line must not invoke process_event (WO-037)."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=10)
+    parser = MagicMock()
+    parser.parse_log_line.return_value = None
+    processed: list[object] = []
+    queue.put_nowait(SyslogMsg("unparseable", "127.0.0.1", 1))
+    running = True
+
+    async def consume_until_stopped() -> None:
+        nonlocal running
+        await message_consumer(
+            queue,
+            parser,
+            processed.append,
+            running=lambda: running,
+        )
+
+    task = asyncio.create_task(consume_until_stopped())
+    await asyncio.sleep(0.1)
+    running = False
+    await task
+
+    assert processed == []
+    parser.parse_log_line.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_message_consumer_exits_when_running_false() -> None:
+    """Consumer loop terminates when running is False and the queue is empty (WO-037)."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=10)
+    parser = MagicMock()
+
+    await asyncio.wait_for(
+        message_consumer(
+            queue,
+            parser,
+            lambda _event: None,
+            running=lambda: False,
+        ),
+        timeout=1,
+    )
+
+    parser.parse_log_line.assert_not_called()

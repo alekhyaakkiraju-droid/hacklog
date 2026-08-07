@@ -130,7 +130,7 @@ async def message_consumer(
         try:
             queue_depth.set(queue.qsize())
             event_log = parser.parse_log_line(msg)
-            if event_log:
+            if event_log is not None:
                 process_event(event_log)
                 logger.debug(
                     "message_processed",
