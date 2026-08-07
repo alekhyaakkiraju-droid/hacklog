@@ -154,13 +154,15 @@ async def run_async_syslog_server(
     parser: Parser,
     process_event: Callable[[object], None],
     syslog_config: SyslogConfig | None = None,
+    queue: asyncio.Queue[SyslogMsg | object] | None = None,
     queue_maxsize: int = DEFAULT_QUEUE_MAXSIZE,
     shutdown_drain_seconds: float = DEFAULT_SHUTDOWN_DRAIN_SECONDS,
     encoding: str | None = None,
 ) -> None:
     """Run the asyncio syslog UDP server until SIGINT or SIGTERM."""
     loop = asyncio.get_running_loop()
-    queue: asyncio.Queue[SyslogMsg | object] = asyncio.Queue(maxsize=queue_maxsize)
+    if queue is None:
+        queue = asyncio.Queue(maxsize=queue_maxsize)
     validator = build_validator(syslog_config)
     accepting = True
     running = True

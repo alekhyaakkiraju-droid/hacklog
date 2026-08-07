@@ -24,10 +24,7 @@ from session import Session  # noqa: E402
 def json_db_engine(tmp_path: Path):
     db_file = tmp_path / "profiles.db"
     engine = create_engine(f"sqlite:///{db_file}")
-    import entities  # noqa: WPS433
-
-    entities.db = engine
-    create_tables()
+    create_tables(engine)
     Session.configure(bind=engine)
     yield engine
     engine.dispose()

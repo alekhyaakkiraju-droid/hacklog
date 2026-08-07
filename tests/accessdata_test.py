@@ -12,6 +12,7 @@ for _path in (_TESTS_DIR, _HACKLOG_DIR, _TESTS_DIR.parent):
 
 from accessdata import DaysDao, GenericDao, HoursDao, IpAddressDao, ServerDao, UserDao
 from entities import Days, Hours, IpAddress, Servers, User, create_db_engine, create_tables
+from session import Session
 
 genericDao = GenericDao()
 userDao = UserDao()
@@ -25,8 +26,9 @@ class AccessDataTests(unittest.TestCase):
     def setUp(self):
         self._user = User("nrhine", datetime.today(), 10)
         self.dbFile = ":memory:"
-        create_db_engine(self)
-        create_tables()
+        self.engine = create_db_engine(self)
+        create_tables(self.engine)
+        Session.configure(bind=self.engine)
 
     def tearDown(self):
         if self.dbFile != ":memory:":
