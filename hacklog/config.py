@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import os
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic.types import SecretStr
@@ -25,7 +26,7 @@ class SyslogConfig(BaseModel):
         description="UDP port for incoming syslog messages.",
     )
     max_message_size: int = Field(
-        default=8192,
+        default=2048,
         ge=512,
         le=65535,
         description="Maximum syslog datagram size accepted in bytes.",
@@ -37,7 +38,7 @@ class SyslogConfig(BaseModel):
     rate_limit_per_source: int = Field(
         default=100,
         ge=1,
-        description="Maximum syslog messages accepted per source IP per minute.",
+        description="Maximum syslog messages accepted per source IP per second.",
     )
 
 
@@ -318,6 +319,17 @@ def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
         SyslogConfig(**yaml_data.get("syslog", {})),
         _SyslogSettings().model_dump(),
     )
+    env_allowed_cidrs = os.environ.get("HACKLOG_ALLOWED_CIDRS", "").strip()
+    if env_allowed_cidrs:
+        syslog = syslog.model_copy(
+            update={
+                "allowed_cidrs": [
+                    entry.strip()
+                    for entry in env_allowed_cidrs.split(",")
+                    if entry.strip()
+                ]
+            }
+        )
     scoring = _merge_non_null(
         ScoringConfig(**yaml_data.get("scoring", {})),
         _ScoringSettings().model_dump(),
