@@ -14,15 +14,26 @@ http://dandb.github.io/hacklog/
 Development
 ============
 
-[![Build Status](https://travis-ci.org/dandb/hacklog.svg)](https://travis-ci.org/dandb/hacklog)
+[![CI](https://github.com/alekhyaakkiraju-droid/hacklog/actions/workflows/ci.yml/badge.svg)](https://github.com/alekhyaakkiraju-droid/hacklog/actions/workflows/ci.yml)
 
 Clone repository and install the project
 ```
-git clone git@github.com:dandb/hacklog.git
+git clone git@github.com:alekhyaakkiraju-droid/hacklog.git
 cd hacklog
-python setup.py install
-python setup.py test
+pip install -e ".[test,dev]"
+pytest tests/
 ```
+
+### Branch protection
+
+Configure the following rules on `main` / `master` / `release-next` in GitHub repository settings (**Settings → Branches → Add rule**):
+
+- Require a pull request before merging
+- Require status checks to pass before merging
+- Require branches to be up to date before merging
+- Required status check: **CI / quality (3.12)** and **CI / quality (3.13)**
+
+This ensures ruff, black, isort, mypy, bandit, and pytest all pass before merge.
 
 Start software
 ```

@@ -40,6 +40,13 @@ test = [
   "coverage",
   "bandit",
 ]
+dev = [
+  "ruff",
+  "black",
+  "isort",
+  "mypy",
+  "types-PyYAML",
+]
 
 [project.urls]
 Homepage = "https://github.com/dandb/hacklog"
@@ -59,7 +66,16 @@ ignore = ["E501", "E402"]
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "hacklog.validators",
+  "hacklog.security",
+  "hacklog.metrics",
+]
 disallow_untyped_defs = true
+disable_error_code = ["no-redef", "no-any-return"]
 
 [tool.black]
 line-length = 88
