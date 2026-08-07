@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic.types import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -75,7 +75,7 @@ class SmtpConfig(BaseSettings):
         description="Enable STARTTLS when connecting to the SMTP server.",
     )
     sender: str = Field(
-        default="sshAlerts@dandb.com",
+        validation_alias="HACKLOG_SMTP_SENDER",
         description="From address used when sending alert emails.",
     )
     recipient: str = Field(
@@ -87,10 +87,7 @@ class SmtpConfig(BaseSettings):
     @classmethod
     def validate_password_not_empty(cls, value: SecretStr) -> SecretStr:
         if not value.get_secret_value().strip():
-            raise ValueError(
-                "HACKLOG_SMTP_PASSWORD is required and cannot be empty. "
-                "Set a non-empty SMTP password before starting hacklog."
-            )
+            raise ValueError("HACKLOG_SMTP_PASSWORD environment variable is required")
         return value
 
 
@@ -343,3 +340,31 @@ def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
         database=database,
         security=security,
     )
+
+
+REQUIRED_SMTP_PASSWORD_MESSAGE = "HACKLOG_SMTP_PASSWORD environment variable is required"
+
+
+def _validation_error_is_missing_smtp_password(exc: ValidationError) -> bool:
+    for error in exc.errors():
+        location = error.get("loc", ())
+        if location and location[-1] in ("password", "HACKLOG_SMTP_PASSWORD"):
+            return True
+        message = str(error.get("msg", ""))
+        if "HACKLOG_SMTP_PASSWORD" in message:
+            return True
+        if error.get("type") == "missing" and any(
+            part in ("password", "HACKLOG_SMTP_PASSWORD") for part in location
+        ):
+            return True
+    return False
+
+
+def load_config_or_exit(yaml_path: str | Path | None = None) -> ConfigManager:
+    """Load configuration and exit with an actionable message when SMTP secrets are missing."""
+    try:
+        return load_config(yaml_path)
+    except ValidationError as exc:
+        if _validation_error_is_missing_smtp_password(exc):
+            raise SystemExit(REQUIRED_SMTP_PASSWORD_MESSAGE) from exc
+        raise

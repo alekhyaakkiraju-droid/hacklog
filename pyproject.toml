@@ -37,6 +37,7 @@ test = [
   "pytest-cov",
   "hypothesis",
   "coverage",
+  "bandit",
 ]
 
 [project.urls]

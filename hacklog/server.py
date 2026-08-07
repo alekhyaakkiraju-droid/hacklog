@@ -11,9 +11,10 @@ from twisted.internet import reactor, defer
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from parse import Parser
-from entities import SyslogMsg, MailConf
+from entities import SyslogMsg
 from Queue import Queue
 from entities import create_tables, create_db_engine
+from config import load_config_or_exit
 from logging_config import configure_logging, get_logger
 
 queue = Queue()
@@ -109,7 +110,8 @@ class SyslogServer():
       self.readCmdArgs()
       self.parceConfig(self.config_file)
       self.setLogging()
-      algorithm.setServices(MailConf(self.emailTest))
+      app_config = load_config_or_exit()
+      algorithm.setServices(app_config.smtp)
       create_db_engine(self)
       create_tables()
       self.run() 

@@ -16,7 +16,7 @@ def create_db_engine(server):
 
 def create_tables():
         Base.metadata.create_all(db)
-	Session.configure(bind=db)
+        Session.configure(bind=db)
 
 class EventLog(Base):
 	__tablename__ = 'eventLog'
@@ -54,9 +54,9 @@ class Days(Base):
 	__tablename__ = 'days'
 
 	date = Column('date', DateTime, primary_key=True)
-        username = Column('username', String, primary_key=True)
-        profile = Column('profile', PickleType)
-        totalCount = Column('totalCount', Integer)
+	username = Column('username', String, primary_key=True)
+	profile = Column('profile', PickleType)
+	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
 		self.date=date
@@ -68,9 +68,9 @@ class Hours(Base):
 	__tablename__ = 'hours'
 
 	date = Column('date', DateTime, primary_key=True)
-        username = Column('username', String, primary_key=True)
-        profile = Column('profile', PickleType)
-        totalCount = Column('totalCount', Integer)
+	username = Column('username', String, primary_key=True)
+	profile = Column('profile', PickleType)
+	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
 		self.date=date
@@ -82,9 +82,9 @@ class Servers(Base):
 	__tablename__ = 'servers'
 
 	date = Column('date', DateTime, primary_key=True)
-        username = Column('username', String, primary_key=True)
-        profile = Column('profile', PickleType)
-        totalCount = Column('totalCount', Integer)
+	username = Column('username', String, primary_key=True)
+	profile = Column('profile', PickleType)
+	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
 		self.date=date
@@ -96,9 +96,9 @@ class IpAddress(Base):
 	__tablename__ = 'ipAddress'
 
 	date = Column('date', DateTime, primary_key=True)
-        username = Column('username', String, primary_key=True)
-        profile = Column('profile', PickleType)
-        totalCount = Column('totalCount', Integer)
+	username = Column('username', String, primary_key=True)
+	profile = Column('profile', PickleType)
+	totalCount = Column('totalCount', Integer)
 
 	def __init__(self, date, username, profile, totalCount):
 		self.date=date
