@@ -40,7 +40,6 @@ test = [
   "hypothesis",
   "coverage",
   "bandit",
-  "mockito",
 ]
 
 [project.urls]

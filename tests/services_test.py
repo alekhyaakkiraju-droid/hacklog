@@ -2,11 +2,7 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
-
-import pytest
-
-pytest.importorskip("mockito")
-from mockito import any, mock, verify, when
+from unittest.mock import MagicMock
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _HACKLOG_DIR = _TESTS_DIR.parent / "hacklog"
@@ -14,7 +10,6 @@ for _path in (_TESTS_DIR, _HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from compat import _Compat
 from entities import Days, EventLog, Hours, IpAddress, Servers, User
 from services import EmailService, UpdateService
 
@@ -38,7 +33,7 @@ emailService = EmailService(_smtp_config)
 updateService = UpdateService()
 
 
-class ServiceTests(unittest.TestCase, _Compat):
+class ServiceTests(unittest.TestCase):
     def setUp(self):
         self._eventLog = EventLog(datetime.now(), "nrhine", "1.2.3.4", True, "prod")
         self._user = User("nrhine", datetime.now(), 10)
@@ -46,71 +41,66 @@ class ServiceTests(unittest.TestCase, _Compat):
         self._hour = Hours(datetime.now(), "nrhine", {}, 0)
         self._server = Servers(datetime.now(), "nrhine", {}, 0)
         self._ipAddr = IpAddress(datetime.now(), "nrhine", {}, 0)
-        updateService._genericDao = mock()
-        updateService._userDao = mock()
-        updateService._daysDao = mock()
-        updateService._hoursDao = mock()
-        updateService._serverDao = mock()
-        updateService._ipAddressDao = mock()
-        emailService.mailServer = mock()
+        updateService._genericDao = MagicMock()
+        updateService._userDao = MagicMock()
+        updateService._daysDao = MagicMock()
+        updateService._hoursDao = MagicMock()
+        updateService._serverDao = MagicMock()
+        updateService._ipAddressDao = MagicMock()
+        emailService.mailServer = MagicMock()
 
     def test_email_send(self):
-        when(emailService.mailServer).connect().thenReturn(True)
-        when(emailService.mailServer).sendmail().thenReturn(True)
         emailService.sendEmailAlert(self._user, self._eventLog)
-        verify(emailService.mailServer, times=1).sendmail(any(), any(), any())
+        emailService.mailServer.connect.assert_called_once()
+        emailService.mailServer.sendmail.assert_called_once()
 
     def test_update_day_new_user(self):
-        when(updateService._daysDao).getProfileByUser(self._eventLog.username).thenReturn(None)
+        updateService._daysDao.getProfileByUser.return_value = None
         freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_day_old_user(self):
-        when(updateService._daysDao).getProfileByUser(self._eventLog.username).thenReturn(self._day)
+        updateService._daysDao.getProfileByUser.return_value = self._day
         freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_new_user(self):
-        when(updateService._hoursDao).getProfileByUser(self._eventLog.username).thenReturn(None)
+        updateService._hoursDao.getProfileByUser.return_value = None
         freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_old_user(self):
-        when(updateService._hoursDao).getProfileByUser(self._eventLog.username).thenReturn(self._hour)
+        updateService._hoursDao.getProfileByUser.return_value = self._hour
         freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_server_new_user(self):
-        when(updateService._serverDao).getProfileByUser(self._eventLog.username).thenReturn(None)
+        updateService._serverDao.getProfileByUser.return_value = None
         freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_server_old_user(self):
-        when(updateService._serverDao).getProfileByUser(self._eventLog.username).thenReturn(
-            self._server
-        )
+        updateService._serverDao.getProfileByUser.return_value = self._server
         freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_ipAddr_new_user(self):
-        when(updateService._ipAddressDao).getProfileByUser(self._eventLog.username).thenReturn(None)
+        updateService._ipAddressDao.getProfileByUser.return_value = None
         freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_ipAddr_old_user(self):
-        when(updateService._ipAddressDao).getProfileByUser(self._eventLog.username).thenReturn(
-            self._ipAddr
-        )
+        updateService._ipAddressDao.getProfileByUser.return_value = self._ipAddr
         freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_fetch_user_no_existing(self):
-        when(updateService._userDao).getUserByName(self._eventLog.username).thenReturn(None)
+        updateService._userDao.getUserByName.return_value = None
         user = updateService.fetchUser(self._eventLog)
         self.assertIsInstance(user, User)
 
     def test_fetch_user_existing(self):
-        when(updateService._userDao).getUserByName(self._eventLog.username).thenReturn(self._user)
+        updateService._userDao.getUserByName.return_value = self._user
         user = updateService.fetchUser(self._eventLog)
         self.assertIsInstance(user, User)
 
