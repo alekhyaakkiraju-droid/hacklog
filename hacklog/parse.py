@@ -5,6 +5,11 @@ from datetime import datetime
 
 from entities import EventLog, SyslogMsg
 
+try:
+    from hacklog.validators import validate_parsed_fields
+except ImportError:
+    from validators import validate_parsed_fields
+
 
 class Parser:
     def __init__(
@@ -12,8 +17,10 @@ class Parser:
         success_pattern: str | None = None,
         failure_pattern: str | None = None,
         test_enabled: bool = False,
+        validate_fields: bool = True,
     ) -> None:
         self.test_enabled = test_enabled
+        self.validate_fields = validate_fields
         self.success_pattern = (
             success_pattern
             or r"Accepted\s+publickey\s+for\s+([0-9a-zA-Z_-]+)\s+from\s+"
@@ -102,5 +109,11 @@ class Parser:
             return_event = False
 
         if return_event:
+            if self.validate_fields and not validate_parsed_fields(
+                return_event.username,
+                return_event.ip_address,
+                return_event.server,
+            ):
+                return None
             return return_event
         return None
