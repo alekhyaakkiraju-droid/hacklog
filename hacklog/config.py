@@ -205,6 +205,41 @@ class ScoringConfig(BaseModel):
     )
 
 
+class RetentionConfig(BaseModel):
+    """Data retention and automated purge settings."""
+
+    event_retention_days: int = Field(
+        default=365,
+        ge=1,
+        le=3650,
+        description=(
+            "HACKLOG_EVENT_RETENTION_DAYS: Days to retain event log records. "
+            "Records older than this are physically deleted. Default: 365"
+        ),
+    )
+    profile_inactivity_days: int = Field(
+        default=180,
+        ge=1,
+        le=3650,
+        description=(
+            "HACKLOG_PROFILE_INACTIVITY_DAYS: Days of inactivity after which user "
+            "profiles are purged. Default: 180"
+        ),
+    )
+    purge_schedule_hour: int = Field(
+        default=2,
+        ge=0,
+        le=23,
+        description="UTC hour at which the daily purge job runs. Default: 2 (02:00 UTC)",
+    )
+    purge_batch_size: int = Field(
+        default=1000,
+        ge=1,
+        le=100000,
+        description="Number of records to delete per batch to avoid long transactions. Default: 1000",
+    )
+
+
 class DatabaseConfig(BaseModel):
     """Database connection settings."""
 
@@ -269,6 +304,17 @@ class _SecuritySettings(BaseSettings):
     allowed_source_cidrs: list[str] | None = None
 
 
+class _RetentionSettings(BaseSettings):
+    """Reads retention env vars using HACKLOG_ prefix."""
+
+    model_config = SettingsConfigDict(env_prefix="HACKLOG_", extra="ignore")
+
+    event_retention_days: int | None = None
+    profile_inactivity_days: int | None = None
+    purge_schedule_hour: int | None = None
+    purge_batch_size: int | None = None
+
+
 class ConfigManager:
     """Validated hacklog configuration assembled from YAML and environment variables."""
 
@@ -279,12 +325,14 @@ class ConfigManager:
         scoring: ScoringConfig,
         database: DatabaseConfig,
         security: SecurityConfig,
+        retention: RetentionConfig | None = None,
     ) -> None:
         self.syslog = syslog
         self.smtp = smtp
         self.scoring = scoring
         self.database = database
         self.security = security
+        self.retention = retention or RetentionConfig()
 
 
 def _load_yaml(path: Path | None) -> dict[str, Any]:
@@ -347,12 +395,18 @@ def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
     smtp_yaml = yaml_data.get("smtp", {})
     smtp = SmtpConfig(**smtp_yaml)
 
+    retention = _merge_non_null(
+        RetentionConfig(**yaml_data.get("retention", {})),
+        _RetentionSettings().model_dump(),
+    )
+
     return ConfigManager(
         syslog=syslog,
         smtp=smtp,
         scoring=scoring,
         database=database,
         security=security,
+        retention=retention,
     )
 
 
