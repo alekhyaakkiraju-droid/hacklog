@@ -1,0 +1,70 @@
+# Version control
+.git
+.gitignore
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Build artefacts
+*.egg-info/
+*.egg
+dist/
+build/
+wheels/
+sdist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test infrastructure (not needed in the image)
+tests/
+.pytest_cache/
+.coverage
+.tox/
+nosetests.xml
+
+# Type-checking caches
+.mypy_cache/
+.ruff_cache/
+
+# IDE / editor artefacts
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets (never bake into the image)
+.env
+.env.local
+*.pem
+*.key
+
+# CI/CD configuration
+.github/
+.travis.yml
+
+# Legacy packaging that is not needed for Docker builds
+hacklog.spec
+scripts/
+
+# Documentation and data samples (reduce image context size)
+doc/
+data/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+hacklog/hacklog.db
+
+# Miscellaneous
+*.log
+*.pid
+CHANGES

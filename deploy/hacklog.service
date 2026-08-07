@@ -1,0 +1,60 @@
+[Unit]
+Description=Hacklog Security Scoring Daemon
+Documentation=https://github.com/dandb/hacklog
+After=network.target
+
+[Service]
+Type=simple
+User=hacklog
+Group=hacklog
+
+# Load secrets and all HACKLOG_* configuration from the environment file.
+# See deploy/hacklog.env.example for required and optional variables.
+# Permissions must be 600 owned by hacklog:hacklog to protect secrets.
+EnvironmentFile=/etc/hacklog/hacklog.env
+
+# Start the server using the installed hacklog package.
+ExecStart=/usr/bin/python3 -m hacklog.server
+
+# Restart automatically on non-zero exit, with a 5-second back-off.
+Restart=on-failure
+RestartSec=5
+
+# ── Resource limits ─────────────────────────────────────────────────────────
+MemoryMax=512M
+CPUQuota=200%
+
+# ── Security hardening ──────────────────────────────────────────────────────
+# Prevent privilege escalation via setuid/setgid binaries.
+NoNewPrivileges=yes
+
+# Mount the OS filesystem read-only (dirs below are exempted automatically).
+ProtectSystem=strict
+
+# Deny access to user home directories.
+ProtectHome=yes
+
+# Provide an isolated /tmp and /var/tmp namespace.
+PrivateTmp=yes
+
+# Allow binding to privileged ports (< 1024) when port 514 is configured.
+# Not required for the default port 10514.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# ── Managed directories ─────────────────────────────────────────────────────
+# systemd creates these paths, sets ownership to hacklog:hacklog, and grants
+# write access even under ProtectSystem=strict.
+#   /var/lib/hacklog  → SQLite database (set HACKLOG_DATABASE_DB_URL accordingly)
+#   /var/log/hacklog  → dead-letter JSON-lines files written on DB failure
+StateDirectory=hacklog
+LogsDirectory=hacklog
+
+# ── Logging ─────────────────────────────────────────────────────────────────
+# Route all output to the systemd journal for structured log integration.
+# Retrieve with: journalctl -u hacklog -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hacklog
+
+[Install]
+WantedBy=multi-user.target
