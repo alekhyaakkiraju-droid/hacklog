@@ -41,12 +41,9 @@ class ServiceTests(unittest.TestCase):
         self._hour = Hours(datetime.now(), "nrhine", {}, 0)
         self._server = Servers(datetime.now(), "nrhine", {}, 0)
         self._ipAddr = IpAddress(datetime.now(), "nrhine", {}, 0)
-        updateService._genericDao = MagicMock()
-        updateService._userDao = MagicMock()
-        updateService._daysDao = MagicMock()
-        updateService._hoursDao = MagicMock()
-        updateService._serverDao = MagicMock()
-        updateService._ipAddressDao = MagicMock()
+        updateService._profile_repository = MagicMock()
+        updateService._user_repository = MagicMock()
+        updateService._audit_repository = MagicMock()
         emailService.mailServer = MagicMock()
 
     def test_email_send(self):
@@ -55,52 +52,52 @@ class ServiceTests(unittest.TestCase):
         emailService.mailServer.sendmail.assert_called_once()
 
     def test_update_day_new_user(self):
-        updateService._daysDao.getProfileByUser.return_value = None
+        updateService._profile_repository.get_profile.return_value = None
         freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_day_old_user(self):
-        updateService._daysDao.getProfileByUser.return_value = self._day
+        updateService._profile_repository.get_profile.return_value = self._day
         freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_new_user(self):
-        updateService._hoursDao.getProfileByUser.return_value = None
+        updateService._profile_repository.get_profile.return_value = None
         freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_old_user(self):
-        updateService._hoursDao.getProfileByUser.return_value = self._hour
+        updateService._profile_repository.get_profile.return_value = self._hour
         freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_server_new_user(self):
-        updateService._serverDao.getProfileByUser.return_value = None
+        updateService._profile_repository.get_profile.return_value = None
         freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_server_old_user(self):
-        updateService._serverDao.getProfileByUser.return_value = self._server
+        updateService._profile_repository.get_profile.return_value = self._server
         freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_ipAddr_new_user(self):
-        updateService._ipAddressDao.getProfileByUser.return_value = None
+        updateService._profile_repository.get_profile.return_value = None
         freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_update_ipAddr_old_user(self):
-        updateService._ipAddressDao.getProfileByUser.return_value = self._ipAddr
+        updateService._profile_repository.get_profile.return_value = self._ipAddr
         freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
         self.assertIsInstance(freq, float)
 
     def test_fetch_user_no_existing(self):
-        updateService._userDao.getUserByName.return_value = None
+        updateService._user_repository.get_by_username.return_value = None
         user = updateService.fetchUser(self._eventLog)
         self.assertIsInstance(user, User)
 
     def test_fetch_user_existing(self):
-        updateService._userDao.getUserByName.return_value = self._user
+        updateService._user_repository.get_by_username.return_value = self._user
         user = updateService.fetchUser(self._eventLog)
         self.assertIsInstance(user, User)
 

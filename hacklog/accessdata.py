@@ -1,71 +1,79 @@
-"""Data access layer for hacklog entity persistence."""
+"""Data access layer for hacklog entity persistence (DAO compatibility wrappers)."""
 
-from sqlalchemy import select
+from collections.abc import Callable
 
-from entities import Days, Hours, IpAddress, Servers, User
-from logging_config import get_logger
-from session import Session
+from sqlalchemy.orm import Session
 
-logger = get_logger("accessdata")
+from entities import Days, EventLog, Hours, IpAddress, Servers, User
+from repositories import AuditRepository, ProfileRepository, UserRepository
+from session import Session as SessionFactory
 
 
 class GenericDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        factory = session_factory or SessionFactory
+        self._profile_repository = ProfileRepository(factory)
+        self._user_repository = UserRepository(factory)
+        self._audit_repository = AuditRepository(factory)
+
     def saveEntity(self, entity: object) -> None:
-        with Session() as session:
-            session.add(entity)
-            session.commit()
-            logger.debug(
-                "entity_saved",
-                operation="save_entity",
-                entity_type=type(entity).__name__,
-            )
+        if isinstance(entity, EventLog):
+            self._audit_repository.save_event(entity)
+        elif isinstance(entity, User):
+            self._user_repository.save(entity)
+        elif isinstance(entity, (Days, Hours, Servers, IpAddress)):
+            self._profile_repository.save_profile(entity)
+        else:
+            raise TypeError(f"Unsupported entity type: {type(entity).__name__}")
 
     def mergeEntity(self, entity: object) -> None:
-        with Session() as session:
-            session.merge(entity)
-            session.commit()
-            logger.debug(
-                "entity_merged",
-                operation="merge_entity",
-                entity_type=type(entity).__name__,
-            )
+        if isinstance(entity, User):
+            self._user_repository.merge(entity)
+        elif isinstance(entity, (Days, Hours, Servers, IpAddress)):
+            self._profile_repository.update_profile(entity)
+        else:
+            raise TypeError(f"Unsupported entity type for merge: {type(entity).__name__}")
 
 
 class UserDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._user_repository = UserRepository(session_factory or SessionFactory)
+
     def getUserByName(self, user: str) -> User | None:
-        with Session() as session:
-            return session.execute(
-                select(User).where(User.username == user)
-            ).scalar_one_or_none()
+        return self._user_repository.get_by_username(user)
 
 
 class DaysDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+
     def getProfileByUser(self, user: str) -> Days | None:
-        with Session() as session:
-            return session.execute(
-                select(Days).where(Days.username == user)
-            ).scalar_one_or_none()
+        profile = self._profile_repository.get_profile(Days, user)
+        return profile if isinstance(profile, Days) else None
 
 
 class HoursDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+
     def getProfileByUser(self, user: str) -> Hours | None:
-        with Session() as session:
-            return session.execute(
-                select(Hours).where(Hours.username == user)
-            ).scalar_one_or_none()
+        profile = self._profile_repository.get_profile(Hours, user)
+        return profile if isinstance(profile, Hours) else None
 
 
 class IpAddressDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+
     def getProfileByUser(self, user: str) -> IpAddress | None:
-        with Session() as session:
-            return session.execute(
-                select(IpAddress).where(IpAddress.username == user)
-            ).scalar_one_or_none()
+        profile = self._profile_repository.get_profile(IpAddress, user)
+        return profile if isinstance(profile, IpAddress) else None
 
 
 class ServerDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+
     def getProfileByUser(self, user: str) -> Servers | None:
-        with Session() as session:
-            return session.execute(
-                select(Servers).where(Servers.username == user)
-            ).scalar_one_or_none()
+        profile = self._profile_repository.get_profile(Servers, user)
+        return profile if isinstance(profile, Servers) else None
