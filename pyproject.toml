@@ -26,6 +26,7 @@ dependencies = [
   "aiosmtplib",
   "pydantic-settings",
   "structlog",
+  "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
