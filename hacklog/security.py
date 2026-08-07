@@ -7,7 +7,6 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable
 
 try:
     from hacklog.logging_config import get_logger
@@ -69,7 +68,9 @@ class TokenBucket:
     def consume(self, amount: int = 1) -> bool:
         now = time.monotonic()
         elapsed = now - self.last_refill
-        self.tokens = min(self.burst_capacity, self.tokens + elapsed * self.rate_per_second)
+        self.tokens = min(
+            self.burst_capacity, self.tokens + elapsed * self.rate_per_second
+        )
         self.last_refill = now
         if self.tokens >= amount:
             self.tokens -= amount
@@ -87,7 +88,9 @@ class RateLimiter:
         ttl_seconds: float = 300.0,
     ) -> None:
         self.rate_per_second = rate_per_second
-        self.burst_capacity = burst_capacity if burst_capacity is not None else int(rate_per_second)
+        self.burst_capacity = (
+            burst_capacity if burst_capacity is not None else int(rate_per_second)
+        )
         self.ttl_seconds = ttl_seconds
         self._buckets: dict[str, tuple[TokenBucket, float]] = {}
         self._lock = threading.Lock()
@@ -140,7 +143,9 @@ class MessageValidator:
             messages_received_total.inc()
         return ValidationResult(accepted=True)
 
-    def _reject(self, source_ip: str, reason: str, message_size: int) -> ValidationResult:
+    def _reject(
+        self, source_ip: str, reason: str, message_size: int
+    ) -> ValidationResult:
         if self.meter_and_log:
             messages_dropped_total.labels(reason=reason).inc()
             logger.warning(

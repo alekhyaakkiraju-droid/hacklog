@@ -29,10 +29,16 @@ def metered_validator() -> MessageValidator:
     )
 
 
-def test_rejected_messages_increment_prometheus_counter(metered_validator: MessageValidator) -> None:
-    before = messages_dropped_total.labels(reason="ip_rejected")._value.get()  # noqa: SLF001
+def test_rejected_messages_increment_prometheus_counter(
+    metered_validator: MessageValidator,
+) -> None:
+    before = messages_dropped_total.labels(
+        reason="ip_rejected"
+    )._value.get()  # noqa: SLF001
     metered_validator.validate("203.0.113.5", b"drop-me")
-    after = messages_dropped_total.labels(reason="ip_rejected")._value.get()  # noqa: SLF001
+    after = messages_dropped_total.labels(
+        reason="ip_rejected"
+    )._value.get()  # noqa: SLF001
     assert after - before == 1.0
 
 

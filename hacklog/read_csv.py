@@ -40,23 +40,25 @@ def resolve_csv_input_path(file_name: str, base_dir: Path | None = None) -> Path
 
 
 class ReadCSVFiles:
-    def __init__(self, testEnabled: bool = False) -> None:
-        self.testEnabled = testEnabled
+    def __init__(self, test_enabled: bool = False) -> None:
+        self.test_enabled = test_enabled
 
-    def logMessages(self, logData: dict[str, str]) -> None:
+    def log_messages(self, log_data: dict[str, str]) -> None:
         sys_log_message = ""
-        logData["Date Time"] = datetime.strptime(logData["Date Time"], "%Y-%m-%d %H:%M:%S")
-        if self.testEnabled:
-            if logData["Login_Status"] == "TRUE" or logData["Login_Status"] == "True":
+        log_data["Date Time"] = datetime.strptime(
+            log_data["Date Time"], "%Y-%m-%d %H:%M:%S"
+        )
+        if self.test_enabled:
+            if log_data["Login_Status"] == "TRUE" or log_data["Login_Status"] == "True":
                 sys_log_message = (
                     "sshd[%d]: Accepted publickey for %s from %s port %d ssh2 DATE_TIME %s HOST %s"
                     % (
                         _demo_syslog_pid(),
-                        logData["User"],
-                        logData["IP"],
+                        log_data["User"],
+                        log_data["IP"],
                         _demo_syslog_port(),
-                        logData["Date Time"],
-                        logData["Server_Name"],
+                        log_data["Date Time"],
+                        log_data["Server_Name"],
                     )
                 )
             else:
@@ -65,20 +67,20 @@ class ReadCSVFiles:
                     "euid=0 tty=ssh ruser= rhost=%s user=%s DATE_TIME %s HOST %s"
                     % (
                         _demo_syslog_pid(),
-                        logData["IP"],
-                        logData["User"],
-                        logData["Date Time"],
-                        logData["Server_Name"],
+                        log_data["IP"],
+                        log_data["User"],
+                        log_data["Date Time"],
+                        log_data["Server_Name"],
                     )
                 )
         else:
-            if logData["Login_Status"] == "TRUE" or logData["Login_Status"] == "True":
+            if log_data["Login_Status"] == "TRUE" or log_data["Login_Status"] == "True":
                 sys_log_message = (
                     "sshd[%d]: Accepted publickey for %s from %s port %d ssh2"
                     % (
                         _demo_syslog_pid(),
-                        logData["User"],
-                        logData["IP"],
+                        log_data["User"],
+                        log_data["IP"],
                         _demo_syslog_port(),
                     )
                 )
@@ -88,14 +90,14 @@ class ReadCSVFiles:
                     "euid=0 tty=ssh ruser= rhost=%s user=%s"
                     % (
                         _demo_syslog_pid(),
-                        logData["IP"],
-                        logData["User"],
+                        log_data["IP"],
+                        log_data["User"],
                     )
                 )
 
         logger.info(sys_log_message)
 
-    def readLineGenerateLogs(self, reader: csv.reader) -> None:
+    def read_line_generate_logs(self, reader: csv.reader) -> None:
         row_num = 0
         file_data: list[str] = []
         for row in reader:
@@ -109,15 +111,15 @@ class ReadCSVFiles:
                     col_num += 1
                 if row_num % 5 == 0:
                     sleep(50.0 / 1000.0)
-                self.logMessages(each_row_data)
+                self.log_messages(each_row_data)
             row_num += 1
 
 
 def main() -> None:
     server = SyslogServer()
-    server.parceConfig("../conf/server.conf")
-    if server.testEnabled:
-        read_csv = ReadCSVFiles(server.testEnabled)
+    server.parse_config("../conf/server.conf")
+    if server.test_enabled:
+        read_csv = ReadCSVFiles(server.test_enabled)
     else:
         read_csv = ReadCSVFiles()
 
@@ -137,7 +139,7 @@ def main() -> None:
     csv_path = resolve_csv_input_path(file_name)
     with open(csv_path, encoding="utf-8", newline="") as file_object:
         reader = csv.reader(file_object)
-        read_csv.readLineGenerateLogs(reader)
+        read_csv.read_line_generate_logs(reader)
 
 
 if __name__ == "__main__":

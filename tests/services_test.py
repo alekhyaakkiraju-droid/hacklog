@@ -11,7 +11,7 @@ for _path in (_TESTS_DIR, _HACKLOG_DIR, _TESTS_DIR.parent):
         sys.path.insert(0, str(_path))
 
 from alerting import AlertService
-from entities import Days, EventLog, Hours, IpAddress, Servers, User
+from entities import Days, EventLog, Hours, IpAddress, Server, User
 from services import UpdateService
 
 try:
@@ -30,76 +30,76 @@ _smtp_config = SmtpConfig(
     recipient="soc@example.com",
     use_tls=True,
 )
-emailService = AlertService(_smtp_config)
-updateService = UpdateService()
+email_service = AlertService(_smtp_config)
+update_service = UpdateService()
 
 
 class ServiceTests(unittest.TestCase):
     def setUp(self):
-        self._eventLog = EventLog(datetime.now(), "nrhine", "1.2.3.4", True, "prod")
+        self._event_log = EventLog(datetime.now(), "nrhine", "1.2.3.4", True, "prod")
         self._user = User("nrhine", datetime.now(), 10)
         self._day = Days(datetime.now(), "nrhine", {"1.2.3.5": 1}, 1)
         self._hour = Hours(datetime.now(), "nrhine", {}, 0)
-        self._server = Servers(datetime.now(), "nrhine", {}, 0)
-        self._ipAddr = IpAddress(datetime.now(), "nrhine", {}, 0)
-        updateService._profile_repository = MagicMock()
-        updateService._user_repository = MagicMock()
-        updateService._audit_repository = MagicMock()
+        self._server = Server(datetime.now(), "nrhine", {}, 0)
+        self._ip_addr = IpAddress(datetime.now(), "nrhine", {}, 0)
+        update_service._profile_repository = MagicMock()
+        update_service._user_repository = MagicMock()
+        update_service._audit_repository = MagicMock()
         self._smtp_sender = AsyncMock()
-        emailService._smtp_sender = self._smtp_sender
+        email_service._smtp_sender = self._smtp_sender
 
     def test_email_send(self):
-        emailService.sendEmailAlert(self._user, self._eventLog)
+        email_service.send_email_alert(self._user, self._event_log)
         self._smtp_sender.assert_awaited_once()
 
     def test_update_day_new_user(self):
-        updateService._profile_repository.get_profile.return_value = None
-        freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = None
+        freq = update_service.update_and_return_day_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_update_day_old_user(self):
-        updateService._profile_repository.get_profile.return_value = self._day
-        freq = updateService.updateAndReturnDayFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = self._day
+        freq = update_service.update_and_return_day_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_new_user(self):
-        updateService._profile_repository.get_profile.return_value = None
-        freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = None
+        freq = update_service.update_and_return_hour_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_update_hour_old_user(self):
-        updateService._profile_repository.get_profile.return_value = self._hour
-        freq = updateService.updateAndReturnHourFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = self._hour
+        freq = update_service.update_and_return_hour_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_update_server_new_user(self):
-        updateService._profile_repository.get_profile.return_value = None
-        freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = None
+        freq = update_service.update_and_return_server_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_update_server_old_user(self):
-        updateService._profile_repository.get_profile.return_value = self._server
-        freq = updateService.updateAndReturnServerFreqForUser(self._eventLog)
+        update_service._profile_repository.get_profile.return_value = self._server
+        freq = update_service.update_and_return_server_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
-    def test_update_ipAddr_new_user(self):
-        updateService._profile_repository.get_profile.return_value = None
-        freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
+    def test_update_ip_addr_new_user(self):
+        update_service._profile_repository.get_profile.return_value = None
+        freq = update_service.update_and_return_ip_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
-    def test_update_ipAddr_old_user(self):
-        updateService._profile_repository.get_profile.return_value = self._ipAddr
-        freq = updateService.updateAndReturnIpFreqForUser(self._eventLog)
+    def test_update_ip_addr_old_user(self):
+        update_service._profile_repository.get_profile.return_value = self._ip_addr
+        freq = update_service.update_and_return_ip_freq_for_user(self._event_log)
         self.assertIsInstance(freq, float)
 
     def test_fetch_user_no_existing(self):
-        updateService._user_repository.get_by_username.return_value = None
-        user = updateService.fetchUser(self._eventLog)
+        update_service._user_repository.get_by_username.return_value = None
+        user = update_service.fetch_user(self._event_log)
         self.assertIsInstance(user, User)
 
     def test_fetch_user_existing(self):
-        updateService._user_repository.get_by_username.return_value = self._user
-        user = updateService.fetchUser(self._eventLog)
+        update_service._user_repository.get_by_username.return_value = self._user
+        user = update_service.fetch_user(self._event_log)
         self.assertIsInstance(user, User)
 
 

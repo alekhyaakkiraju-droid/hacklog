@@ -7,14 +7,24 @@ import pickle
 from datetime import datetime
 from pathlib import Path
 
-import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Column, DateTime, Integer, LargeBinary, MetaData, String, Table, create_engine
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    LargeBinary,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+)
 
 PROFILE_FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(encoding="utf-8")
+    (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 PROFILE_TABLES = {
@@ -22,6 +32,13 @@ PROFILE_TABLES = {
     "hours": PROFILE_FIXTURES["hours"],
     "servers": PROFILE_FIXTURES["servers"],
     "ipAddress": PROFILE_FIXTURES["ipAddress"],
+}
+
+MIGRATED_TABLE_NAMES = {
+    "days": "days",
+    "hours": "hours",
+    "servers": "server",
+    "ipAddress": "ipAddress",
 }
 
 
@@ -48,12 +65,10 @@ def _create_legacy_pickle_database(db_path: Path) -> dict[str, dict[str, dict]]:
         for table_name, profile in PROFILE_TABLES.items():
             username = f"{table_name}-user"
             connection.execute(
-                sa.text(
-                    f"""
+                sa.text(f"""
                     INSERT INTO {table_name} (date, username, profile, totalCount)
                     VALUES (:date, :username, :profile, :totalCount)
-                    """
-                ),
+                    """),
                 {
                     "date": stamp,
                     "username": username,
@@ -83,9 +98,16 @@ def _load_migrated_profiles(db_path: Path) -> dict[str, dict]:
 
     with engine.connect() as connection:
         for table_name in PROFILE_TABLES:
-            row = connection.execute(
-                sa.text(f"SELECT username, profile FROM {table_name}")  # noqa: S608
-            ).mappings().one()
+            migrated_table = MIGRATED_TABLE_NAMES[table_name]
+            row = (
+                connection.execute(
+                    sa.text(
+                        f"SELECT username, profile FROM {migrated_table}"
+                    )  # noqa: S608
+                )
+                .mappings()
+                .one()
+            )
             profile = row["profile"]
             if isinstance(profile, str):
                 profile = json.loads(profile)
@@ -124,9 +146,7 @@ def test_migration_downgrade_is_best_effort_round_trip(tmp_path: Path) -> None:
     with engine.connect() as connection:
         for table_name, fixture in expected.items():
             row = connection.execute(
-                sa.text(
-                    f"SELECT profile FROM {table_name} WHERE username = :username"
-                ),
+                sa.text(f"SELECT profile FROM {table_name} WHERE username = :username"),
                 {"username": fixture["username"]},
             ).one()
             restored = pickle.loads(row[0], encoding="latin1")

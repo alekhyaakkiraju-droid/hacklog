@@ -61,7 +61,9 @@ def smtp_config() -> SmtpConfig:
 
 @pytest.fixture
 def event_log() -> EventLog:
-    return EventLog(datetime(2026, 1, 15, 10, 30, 0), "nrhine", "10.0.0.1", False, "prod-host")
+    return EventLog(
+        datetime(2026, 1, 15, 10, 30, 0), "nrhine", "10.0.0.1", False, "prod-host"
+    )
 
 
 @pytest.fixture
@@ -234,7 +236,9 @@ async def test_alert_service_writes_dead_letter_when_circuit_open(
     assert payload["reason"] == "circuit_open"
 
 
-def test_build_alert_message_includes_required_fields(user: User, event_log: EventLog) -> None:
+def test_build_alert_message_includes_required_fields(
+    user: User, event_log: EventLog
+) -> None:
     message = build_alert_message(
         user,
         event_log,
@@ -254,7 +258,9 @@ def test_is_transient_smtp_error_classification() -> None:
 
 
 @pytest.mark.asyncio
-async def test_dead_letter_writer_rotates_when_max_size_exceeded(tmp_path: Path) -> None:
+async def test_dead_letter_writer_rotates_when_max_size_exceeded(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "dead_letter.jsonl"
     writer = DeadLetterWriter(path, max_bytes=32)
     await writer.write({"username": "a", "server": "s1", "score": 1, "timestamp": "t"})
@@ -271,7 +277,7 @@ def test_send_email_alert_sync_wrapper(
 ) -> None:
     sender = AsyncMock()
     service = AlertService(smtp_config, smtp_sender=sender)
-    service.sendEmailAlert(user, event_log)
+    service.send_email_alert(user, event_log)
     sender.assert_awaited_once()
 
 
@@ -283,6 +289,6 @@ async def test_send_email_alert_schedules_task_in_running_loop(
 ) -> None:
     sender = AsyncMock()
     service = AlertService(smtp_config, smtp_sender=sender)
-    service.sendEmailAlert(user, event_log)
+    service.send_email_alert(user, event_log)
     await asyncio.sleep(0)
     sender.assert_awaited_once()

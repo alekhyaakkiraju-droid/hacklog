@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
-import os
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic.types import SecretStr
@@ -295,7 +295,9 @@ def _load_yaml(path: Path | None) -> dict[str, Any]:
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise ValueError(f"Configuration file {path} must contain a YAML mapping at the top level.")
+        raise ValueError(
+            f"Configuration file {path} must contain a YAML mapping at the top level."
+        )
     return data
 
 
@@ -354,7 +356,9 @@ def load_config(yaml_path: str | Path | None = None) -> ConfigManager:
     )
 
 
-REQUIRED_SMTP_PASSWORD_MESSAGE = "HACKLOG_SMTP_PASSWORD environment variable is required"
+REQUIRED_SMTP_PASSWORD_MESSAGE = (
+    "HACKLOG_SMTP_PASSWORD environment variable is required"
+)
 
 
 def _validation_error_is_missing_smtp_password(exc: ValidationError) -> bool:

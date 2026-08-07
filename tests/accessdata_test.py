@@ -11,67 +11,75 @@ for _path in (_TESTS_DIR, _HACKLOG_DIR, _TESTS_DIR.parent):
         sys.path.insert(0, str(_path))
 
 from accessdata import DaysDao, GenericDao, HoursDao, IpAddressDao, ServerDao, UserDao
-from entities import Days, Hours, IpAddress, Servers, User, create_db_engine, create_tables
+from entities import (
+    Days,
+    Hours,
+    IpAddress,
+    Server,
+    User,
+    create_db_engine,
+    create_tables,
+)
 from session import Session
 
-genericDao = GenericDao()
-userDao = UserDao()
-daysDao = DaysDao()
-hoursDao = HoursDao()
-serverDao = ServerDao()
-ipAddressDao = IpAddressDao()
+generic_dao = GenericDao()
+user_dao = UserDao()
+days_dao = DaysDao()
+hours_dao = HoursDao()
+server_dao = ServerDao()
+ip_address_dao = IpAddressDao()
 
 
 class AccessDataTests(unittest.TestCase):
     def setUp(self):
         self._user = User("nrhine", datetime.today(), 10)
-        self.dbFile = ":memory:"
+        self.db_file = ":memory:"
         self.engine = create_db_engine(self)
         create_tables(self.engine)
         Session.configure(bind=self.engine)
 
     def tearDown(self):
-        if self.dbFile != ":memory:":
-            os.remove(self.dbFile)
+        if self.db_file != ":memory:":
+            os.remove(self.db_file)
 
     def test_starting_out(self):
         self.assertEqual(1, 1)
 
     def test_save_and_get_user(self):
         username = self._user.username
-        genericDao.saveEntity(self._user)
-        user_test = userDao.getUserByName(username)
+        generic_dao.save_entity(self._user)
+        user_test = user_dao.get_user_by_name(username)
         self.assertIsInstance(user_test, User)
 
     def test_save_and_get_day(self):
         day = Days(datetime.today(), "nrhine", {}, 0)
-        genericDao.saveEntity(day)
-        day_test = daysDao.getProfileByUser(self._user.username)
+        generic_dao.save_entity(day)
+        day_test = days_dao.get_profile_by_user(self._user.username)
         self.assertIsInstance(day_test, Days)
 
     def test_save_and_get_hour(self):
         hours = Hours(datetime.today(), "nrhine", {}, 0)
-        genericDao.saveEntity(hours)
-        hours_test = hoursDao.getProfileByUser(self._user.username)
+        generic_dao.save_entity(hours)
+        hours_test = hours_dao.get_profile_by_user(self._user.username)
         self.assertIsInstance(hours_test, Hours)
 
     def test_save_and_get_server(self):
-        server = Servers(datetime.today(), "nrhine", {}, 0)
-        genericDao.saveEntity(server)
-        server_test = serverDao.getProfileByUser(self._user.username)
-        self.assertIsInstance(server_test, Servers)
+        server = Server(datetime.today(), "nrhine", {}, 0)
+        generic_dao.save_entity(server)
+        server_test = server_dao.get_profile_by_user(self._user.username)
+        self.assertIsInstance(server_test, Server)
 
-    def test_save_and_get_ipAddress(self):
+    def test_save_and_get_ip_address(self):
         ip_addr = IpAddress(datetime.today(), "nrhine", {}, 0)
-        genericDao.saveEntity(ip_addr)
-        ip_addr_test = ipAddressDao.getProfileByUser(self._user.username)
+        generic_dao.save_entity(ip_addr)
+        ip_addr_test = ip_address_dao.get_profile_by_user(self._user.username)
         self.assertIsInstance(ip_addr_test, IpAddress)
 
     def test_merge_user_updates_score(self):
-        genericDao.saveEntity(self._user)
+        generic_dao.save_entity(self._user)
         self._user.score = 99
-        genericDao.mergeEntity(self._user)
-        merged = userDao.getUserByName(self._user.username)
+        generic_dao.merge_entity(self._user)
+        merged = user_dao.get_user_by_name(self._user.username)
         self.assertIsInstance(merged, User)
         self.assertEqual(merged.score, 99)
 
