@@ -4,7 +4,9 @@ from entities import enum
 from entities import IpAddress
 import math
 from datetime import datetime, timedelta
-import logging
+from logging_config import get_logger
+
+logger = get_logger("algorithm")
 
 Weight = enum(HOURS=10, DAYS=10, SERVER=15, SUCCESS=35, VPN=0, INT=10, EXT=15, IP=15)
 Threshold = enum(CRITICAL=50, SCARY=30, SCARECOUNT=2, SCAREDATEEXPIRE=1)
@@ -47,13 +49,27 @@ def calculateNewScore(eventLog):
 	hourScore = calculateHoursScore(eventLog)
 	
 	totalScore = successScore + ipLocationScore + serverScore + ipScore + dayScore + hourScore
-	logging.debug("Total Score: %s" % totalScore)
+	logger.debug(
+		"score_calculated",
+		operation="calculate_score",
+		username=eventLog.username,
+		source_ip=eventLog.ipAddress,
+		score=totalScore,
+	)
 	return totalScore
 
 def auditEventLog(eventLog):
 	updateService.auditEventLog(eventLog)
 
 def processAlert(user, eventLog):
+	logger.info(
+		"alert_triggered",
+		operation="process_alert",
+		username=user.username,
+		source_ip=eventLog.ipAddress,
+		score=user.score,
+		server=eventLog.server,
+	)
 	emailService.sendEmailAlert(user, eventLog)
 
 def calculateHoursScore(eventLog):

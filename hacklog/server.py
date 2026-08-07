@@ -4,7 +4,6 @@ import thread
 import random
 import algorithm
 import signal
-import logging
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor, defer
@@ -15,8 +14,10 @@ from parse import Parser
 from entities import SyslogMsg, MailConf
 from Queue import Queue
 from entities import create_tables, create_db_engine
+from logging_config import configure_logging, get_logger
 
 queue = Queue()
+logger = get_logger("server")
 
 class SyslogServer():
     """
@@ -27,7 +28,7 @@ class SyslogServer():
       self.port = 10514
       self.bind_address = '127.0.0.1'
       self.config_file = '../conf/server.conf'
-      self.loglevel = logging.DEBUG
+      self.loglevel = 10
       self.running = True
       self.usage = "usage: %prog -c config_file"
       self.testEnabled = False
@@ -63,17 +64,17 @@ class SyslogServer():
         self.config_file = options.config_file
 
     def setLogging(self):
-      logging.basicConfig(level=self.loglevel)      
+      configure_logging(level=self.loglevel)
 
     
     def interrupt(self, signum, stackframe):
-      logging.debug("Got signal: %s" % signum)
+      logger.debug("signal_received", operation="handle_signal", signal=signum)
       self.running = False
       queue.put(SyslogMsg())
       self.stop()
  
     def messageParcer(self):
-       logging.debug("messageParcer in thread " + str(thread.get_ident()))
+       logger.debug("parser_thread_started", operation="message_parser_start", thread_id=thread.get_ident())
        parser = None
        # get parsing patterns from config file when in testing mode
        if self.testEnabled:
@@ -86,7 +87,13 @@ class SyslogServer():
             eventLog = parser.parseLogLine(msg)
             if eventLog:
                 algorithm.processEventLog(eventLog)
-                logging.debug("messages in queue " + str(queue.qsize()) + ", received %r from %s:%d" % (msg.data, msg.host, msg.port))
+                logger.debug(
+                    "message_processed",
+                    operation="process_message",
+                    queue_size=queue.qsize(),
+                    source_host=msg.host,
+                    source_port=msg.port,
+                )
  
     def cleanupThread(self):
       threadPool = reactor.getThreadPool()
@@ -114,6 +121,13 @@ class SyslogServer():
 class SyslogReader(DatagramProtocol):
 
     def datagramReceived(self, data, (host, port)):
+        logger.info(
+            "message_received",
+            operation="receive_datagram",
+            source_ip=host,
+            source_port=port,
+            message_size=len(data),
+        )
         syslogMsg = SyslogMsg(data, host, port)
         queue.put(syslogMsg)
 

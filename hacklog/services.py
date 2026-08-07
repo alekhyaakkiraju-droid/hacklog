@@ -3,9 +3,12 @@ from datetime import datetime
 import smtplib
 from entities import *
 import server
+from logging_config import get_logger
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+logger = get_logger("services")
 
 HourRangeEnum = enum(EARLY=range(4), DAWN=range(4,8), MORNING=range(8,12), AFTERNOON=range(12,16), EVE=range(16,20), NIGHT=range(20,24))
 
@@ -31,10 +34,25 @@ class EmailService:
                 msg['From'] = self.fromAddress
                 self.mailServer.connect()
 		self.mailServer.sendmail(self.fromAddress, toAddress, msg.as_string())
+		logger.info(
+			"email_sent",
+			operation="send_mail",
+			recipient=toAddress,
+		)
 
         def sendEmailAlert(self, user, eventLog):
                 fromAddress = 'sshAlerts@dandb.com'
                 toAddress = 'hackloggroup@googlegroups.com'
+
+                logger.info(
+                        "email_alert_prepared",
+                        operation="send_email_alert",
+                        username=user.username,
+                        source_ip=eventLog.ipAddress,
+                        server=eventLog.server,
+                        score=user.score,
+                        recipient=toAddress,
+                )
 
                 # Create message container - the correct MIME type is multipart/alternative.
                 msg = MIMEMultipart()
@@ -70,6 +88,13 @@ class UpdateService:
 		freq = float(profileDict[value])/profile.totalCount
 		profile.profile = profileDict
 		self._genericDao.mergeEntity(profile)
+		logger.debug(
+			"profile_frequency_updated",
+			operation="update_profile_frequency",
+			profile_type=type(profile).__name__,
+			value=value,
+			frequency=freq,
+		)
 		return freq
 
 	def updateAndReturnHourFreqForUser(self, eventLog):
@@ -113,6 +138,13 @@ class UpdateService:
 
 	def auditEventLog(self, eventLog):
 		self._genericDao.saveEntity(eventLog)
+		logger.debug(
+			"event_log_audited",
+			operation="audit_event_log",
+			username=eventLog.username,
+			source_ip=eventLog.ipAddress,
+			server=eventLog.server,
+		)
 
 	def fetchUser(self, eventLog):
 		user = self._userDao.getUserByName(eventLog.username)
