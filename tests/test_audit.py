@@ -16,11 +16,11 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from alerting import AlertService  # noqa: E402
-from config import SmtpConfig  # noqa: E402
-from entities import AuditRecord, EventLog, User, create_tables  # noqa: E402
-from repositories import AuditRepository  # noqa: E402
-from scoring import ScoringEngine  # noqa: E402
+from hacklog.alerting import AlertService  # noqa: E402
+from hacklog.config import SmtpConfig  # noqa: E402
+from hacklog.entities import AuditRecord, EventLog, User, create_tables  # noqa: E402
+from hacklog.repositories import AuditRepository  # noqa: E402
+from hacklog.scoring import ScoringEngine  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
