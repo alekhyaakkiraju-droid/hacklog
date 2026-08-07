@@ -65,6 +65,14 @@ class AccessDataTests(unittest.TestCase):
         ip_addr_test = ipAddressDao.getProfileByUser(self._user.username)
         self.assertIsInstance(ip_addr_test, IpAddress)
 
+    def test_merge_user_updates_score(self):
+        genericDao.saveEntity(self._user)
+        self._user.score = 99
+        genericDao.mergeEntity(self._user)
+        merged = userDao.getUserByName(self._user.username)
+        self.assertIsInstance(merged, User)
+        self.assertEqual(merged.score, 99)
+
 
 def main():
     unittest.main()

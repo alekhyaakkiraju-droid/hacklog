@@ -5,14 +5,16 @@ from enum import IntEnum
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from session import Session
 
 db = None
-Base = declarative_base()
+
+
+class Base(DeclarativeBase):
+    pass
 MutableProfile = MutableDict.as_mutable(JSON)
 
 

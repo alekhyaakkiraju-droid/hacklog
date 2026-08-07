@@ -1,5 +1,7 @@
 """Data access layer for hacklog entity persistence."""
 
+from sqlalchemy import select
+
 from entities import Days, Hours, IpAddress, Servers, User
 from logging_config import get_logger
 from session import Session
@@ -9,56 +11,61 @@ logger = get_logger("accessdata")
 
 class GenericDao:
     def saveEntity(self, entity: object) -> None:
-        session = Session()
-        session.add(entity)
-        session.commit()
-        logger.debug(
-            "entity_saved",
-            operation="save_entity",
-            entity_type=type(entity).__name__,
-        )
+        with Session() as session:
+            session.add(entity)
+            session.commit()
+            logger.debug(
+                "entity_saved",
+                operation="save_entity",
+                entity_type=type(entity).__name__,
+            )
 
     def mergeEntity(self, entity: object) -> None:
-        session = Session()
-        session.merge(entity)
-        session.commit()
-        logger.debug(
-            "entity_merged",
-            operation="merge_entity",
-            entity_type=type(entity).__name__,
-        )
+        with Session() as session:
+            session.merge(entity)
+            session.commit()
+            logger.debug(
+                "entity_merged",
+                operation="merge_entity",
+                entity_type=type(entity).__name__,
+            )
 
 
 class UserDao:
     def getUserByName(self, user: str) -> User | None:
-        session = Session()
-        full_user = session.query(User).filter(User.username == user).first()
-        return full_user
+        with Session() as session:
+            return session.execute(
+                select(User).where(User.username == user)
+            ).scalar_one_or_none()
 
 
 class DaysDao:
     def getProfileByUser(self, user: str) -> Days | None:
-        session = Session()
-        days = session.query(Days).filter(Days.username == user).first()
-        return days
+        with Session() as session:
+            return session.execute(
+                select(Days).where(Days.username == user)
+            ).scalar_one_or_none()
 
 
 class HoursDao:
     def getProfileByUser(self, user: str) -> Hours | None:
-        session = Session()
-        hours = session.query(Hours).filter(Hours.username == user).first()
-        return hours
+        with Session() as session:
+            return session.execute(
+                select(Hours).where(Hours.username == user)
+            ).scalar_one_or_none()
 
 
 class IpAddressDao:
     def getProfileByUser(self, user: str) -> IpAddress | None:
-        session = Session()
-        ip_addresses = session.query(IpAddress).filter(IpAddress.username == user).first()
-        return ip_addresses
+        with Session() as session:
+            return session.execute(
+                select(IpAddress).where(IpAddress.username == user)
+            ).scalar_one_or_none()
 
 
 class ServerDao:
     def getProfileByUser(self, user: str) -> Servers | None:
-        session = Session()
-        servers = session.query(Servers).filter(Servers.username == user).first()
-        return servers
+        with Session() as session:
+            return session.execute(
+                select(Servers).where(Servers.username == user)
+            ).scalar_one_or_none()

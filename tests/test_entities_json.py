@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _HACKLOG_DIR = _TESTS_DIR.parent / "hacklog"
@@ -54,13 +54,13 @@ def test_profile_round_trips_through_json(
     profile = PROFILE_FIXTURES[fixture_key]
     entity = entity_cls(datetime(2026, 1, 15, 12, 0, 0), "nrhine", profile, 0)
 
-    session = Session()
-    session.add(entity)
-    session.commit()
-
-    loaded = session.query(entity_cls).filter(entity_cls.username == "nrhine").one()
-    assert loaded.profile == profile
-    session.close()
+    with Session() as session:
+        session.add(entity)
+        session.commit()
+        loaded = session.execute(
+            select(entity_cls).where(entity_cls.username == "nrhine")
+        ).scalar_one()
+        assert loaded.profile == profile
 
 
 @pytest.mark.parametrize(("entity_cls", "fixture_key"), ENTITY_CASES)
@@ -72,23 +72,23 @@ def test_empty_profile_dict_round_trips(
     del fixture_key
     entity = entity_cls(datetime(2026, 2, 1, 8, 0, 0), "empty-user", {}, 0)
 
-    session = Session()
-    session.add(entity)
-    session.commit()
-
-    loaded = session.query(entity_cls).filter(entity_cls.username == "empty-user").one()
-    assert loaded.profile == {}
-    session.close()
+    with Session() as session:
+        session.add(entity)
+        session.commit()
+        loaded = session.execute(
+            select(entity_cls).where(entity_cls.username == "empty-user")
+        ).scalar_one()
+        assert loaded.profile == {}
 
 
 def test_days_profile_mon_tue_example(json_db_engine) -> None:
     profile = {"Mon": 5, "Tue": 3}
     entity = Days(datetime(2026, 3, 1, 0, 0, 0), "weekday-user", profile, 8)
 
-    session = Session()
-    session.add(entity)
-    session.commit()
-
-    loaded = session.query(Days).filter(Days.username == "weekday-user").one()
-    assert loaded.profile == {"Mon": 5, "Tue": 3}
-    session.close()
+    with Session() as session:
+        session.add(entity)
+        session.commit()
+        loaded = session.execute(
+            select(Days).where(Days.username == "weekday-user")
+        ).scalar_one()
+        assert loaded.profile == {"Mon": 5, "Tue": 3}
