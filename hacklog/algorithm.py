@@ -14,11 +14,11 @@ Threshold = enum(CRITICAL=50, SCARY=30, SCARECOUNT=2, SCAREDATEEXPIRE=1)
 updateService = None
 emailService = None
 
-def setServices(conf=None):
+def setServices(smtp_config=None):
   global  updateService
   global  emailService
-  updateService = services.UpdateService(conf)
-  emailService = services.EmailService(conf)
+  updateService = services.UpdateService()
+  emailService = services.EmailService(smtp_config)
 
 def testProcess():
 	eventLog = EventLog(date.today(), 'nrhine', '127.0.0.1', True, 'ae1-app80-prd')

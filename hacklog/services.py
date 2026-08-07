@@ -2,7 +2,10 @@ from accessdata import *
 from datetime import datetime
 import smtplib
 from entities import *
-import server
+try:
+	from hacklog.config import SmtpConfig
+except ImportError:
+	from config import SmtpConfig
 from logging_config import get_logger
 
 from email.mime.multipart import MIMEMultipart
@@ -14,25 +17,33 @@ HourRangeEnum = enum(EARLY=range(4), DAWN=range(4,8), MORNING=range(8,12), AFTER
 
 class EmailService:
 
-	def __init__(self, conf=None):
-                # FIXME:  this needs to be rewritten, so config comes from config file
-		#         and no actions are done in the constructor itself
-		if conf.emailTest:
-			gmailUser = 'sshAlertsTest@gmail.com'
-			gmailPassword = 'Dandb@123'
-			self.mailServer = smtplib.SMTP('smtp.gmail.com', 587)
-			self.fromAddress = gmailUser
+	def __init__(self, smtp_config):
+		if smtp_config is None:
+			raise TypeError("EmailService requires SmtpConfig from ConfigManager")
+		if not isinstance(smtp_config, SmtpConfig):
+			raise TypeError("EmailService requires SmtpConfig from ConfigManager")
+		self._smtp_config = smtp_config
+		self.fromAddress = smtp_config.sender
+		self.recipient = smtp_config.recipient
+		self.mailServer = None
+
+	def _ensure_mail_server(self):
+		if self.mailServer is not None:
+			return
+		self.mailServer = smtplib.SMTP(self._smtp_config.host, self._smtp_config.port)
+		if self._smtp_config.use_tls:
 			self.mailServer.ehlo()
 			self.mailServer.starttls()
 			self.mailServer.ehlo()
-			self.mailServer.login(gmailUser, gmailPassword)
-		else:
-			self.mailServer = smtplib.SMTP()
-			self.fromAddress = 'sshAlerts@dandb.com'
+		self.mailServer.login(
+			self._smtp_config.username,
+			self._smtp_config.password.get_secret_value(),
+		)
 
 	def sendMail(self, toAddress, msg):
-                msg['From'] = self.fromAddress
-                self.mailServer.connect()
+		msg['From'] = self.fromAddress
+		self._ensure_mail_server()
+		self.mailServer.connect()
 		self.mailServer.sendmail(self.fromAddress, toAddress, msg.as_string())
 		logger.info(
 			"email_sent",
@@ -40,33 +51,36 @@ class EmailService:
 			recipient=toAddress,
 		)
 
-        def sendEmailAlert(self, user, eventLog):
-                fromAddress = 'sshAlerts@dandb.com'
-                toAddress = 'hackloggroup@googlegroups.com'
+	def sendEmailAlert(self, user, eventLog):
+		toAddress = self.recipient
 
-                logger.info(
-                        "email_alert_prepared",
-                        operation="send_email_alert",
-                        username=user.username,
-                        source_ip=eventLog.ipAddress,
-                        server=eventLog.server,
-                        score=user.score,
-                        recipient=toAddress,
-                )
+		logger.info(
+			"email_alert_prepared",
+			operation="send_email_alert",
+			username=user.username,
+			source_ip=eventLog.ipAddress,
+			server=eventLog.server,
+			score=user.score,
+			recipient=toAddress,
+		)
 
-                # Create message container - the correct MIME type is multipart/alternative.
-                msg = MIMEMultipart()
-                msg['Subject'] = "EMAIL ALERT - CONCERNING SSH ACTIVITY ON: " + eventLog.server
-                msg['To'] = toAddress
+		msg = MIMEMultipart()
+		msg['Subject'] = "EMAIL ALERT - CONCERNING SSH ACTIVITY ON: " + eventLog.server
+		msg['To'] = toAddress
 
-                text = "Hi!\nHow are you?\nThere was some suspicious activity on the following server: " + eventLog.server + " for user: " + user.username + "\n Their current score is " + str(user.score)
+		text = (
+			"Hi!\nHow are you?\nThere was some suspicious activity on the following server: "
+			+ eventLog.server
+			+ " for user: "
+			+ user.username
+			+ "\n Their current score is "
+			+ str(user.score)
+		)
 
-                # Record the MIME types of both parts - text/plain and text/html.
-                part = MIMEText(text, 'plain')
+		part = MIMEText(text, 'plain')
+		msg.attach(part)
 
-                msg.attach(part)
-
-                self.sendMail(toAddress, msg)
+		self.sendMail(toAddress, msg)
 
 
 class UpdateService:

@@ -34,6 +34,7 @@ def _set_required_smtp_env(
 ) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_SMTP_PASSWORD", "secret-password")
+    monkeypatch.setenv("HACKLOG_SMTP_SENDER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_ALERT_RECIPIENT", "soc@example.com")
     if include_host:
         monkeypatch.setenv("HACKLOG_SMTP_HOST", "smtp.example.com")
@@ -45,6 +46,7 @@ def isolated_hacklog_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in (
         "HACKLOG_SMTP_USER",
         "HACKLOG_SMTP_PASSWORD",
+        "HACKLOG_SMTP_SENDER",
         "HACKLOG_SMTP_HOST",
         "HACKLOG_SMTP_PORT",
         "HACKLOG_ALERT_RECIPIENT",
@@ -85,6 +87,7 @@ def test_env_var_override_for_smtp(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_missing_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "alerts@example.com")
+    monkeypatch.setenv("HACKLOG_SMTP_SENDER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_ALERT_RECIPIENT", "soc@example.com")
     monkeypatch.delenv("HACKLOG_SMTP_PASSWORD", raising=False)
 
@@ -98,6 +101,7 @@ def test_missing_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> No
 def test_empty_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_SMTP_PASSWORD", "   ")
+    monkeypatch.setenv("HACKLOG_SMTP_SENDER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_ALERT_RECIPIENT", "soc@example.com")
 
     with pytest.raises(ValidationError) as exc_info:
@@ -105,7 +109,7 @@ def test_empty_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None
 
     message = str(exc_info.value)
     assert "HACKLOG_SMTP_PASSWORD" in message
-    assert "cannot be empty" in message
+    assert "environment variable is required" in message
 
 
 def test_invalid_port_raises_validation_error(monkeypatch: pytest.MonkeyPatch) -> None:
