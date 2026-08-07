@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, release-next]
+  pull_request:
+    branches: [main, master, release-next]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: pip install --only-binary=:all: -r requirements-ci.txt
+
+      - name: Ruff
+        run: ruff check hacklog/ tests/
+
+      - name: Black
+        run: black --check hacklog/ tests/
+
+      - name: isort
+        run: isort --check hacklog/ tests/
+
+      - name: Mypy (typed modules)
+        run: >-
+          mypy hacklog/validators.py hacklog/security.py hacklog/metrics.py
+          --disallow-untyped-defs --ignore-missing-imports --follow-imports=skip
+          --disable-error-code=no-redef --disable-error-code=no-any-return
+
+      - name: Bandit
+        run: bandit -ll -ii -r hacklog/
+
+      - name: Pytest
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/hacklog
+        run: pytest tests/ --cov=hacklog --cov-report=xml
