@@ -26,21 +26,17 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 
 Requires: python-sqlalchemy
-Requires: python-twisted
 
 %if 0%{?with_python26}
-BuildRequires: python26-twisted
 BuildRequires: python26-sqlalchemy
 BuildRequires: python26-setuptools
 
-Requires: python26-twisted
 Requires: python26-sqlalchemy
 
 %else
 
 %if ((0%{?rhel} >= 6 || 0%{?fedora} > 12) && 0%{?include_tests})
 BuildRequires: python-sqlalchemy
-BuildRequires: python-twisted
 BuildRequires: python-setuptools
 %endif
 
