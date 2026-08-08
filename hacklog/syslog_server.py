@@ -153,6 +153,7 @@ async def run_async_syslog_server(
     queue_maxsize: int = DEFAULT_QUEUE_MAXSIZE,
     shutdown_drain_seconds: float = DEFAULT_SHUTDOWN_DRAIN_SECONDS,
     encoding: str | None = None,
+    on_shutdown: Callable[[], None] | None = None,
 ) -> None:
     """Run the asyncio syslog UDP server until SIGINT or SIGTERM."""
     loop = asyncio.get_running_loop()
@@ -162,6 +163,7 @@ async def run_async_syslog_server(
     accepting = True
     running = True
     shutdown_requested = asyncio.Event()
+    shutdown_signals = (signal.SIGINT, signal.SIGTERM)
 
     def stop_accepting() -> None:
         nonlocal accepting
@@ -174,11 +176,11 @@ async def run_async_syslog_server(
         return running
 
     def request_shutdown() -> None:
-        logger.info("shutdown_requested", operation="handle_signal")
+        logger.info("shutdown_started", operation="handle_signal")
         stop_accepting()
         shutdown_requested.set()
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    for sig in shutdown_signals:
         loop.add_signal_handler(sig, request_shutdown)
 
     transport, _protocol = await loop.create_datagram_endpoint(
@@ -203,23 +205,40 @@ async def run_async_syslog_server(
         queue_maxsize=queue_maxsize,
     )
 
-    await shutdown_requested.wait()
-    running = False
-
+    queue_drained = True
     try:
-        await asyncio.wait_for(queue.join(), timeout=shutdown_drain_seconds)
-    except TimeoutError:
-        logger.warning(
-            "shutdown_queue_drain_timeout",
-            operation="drain_queue",
-            timeout_seconds=shutdown_drain_seconds,
+        await shutdown_requested.wait()
+        running = False
+
+        try:
+            await asyncio.wait_for(queue.join(), timeout=shutdown_drain_seconds)
+        except TimeoutError:
+            queue_drained = False
+            logger.warning(
+                "shutdown_queue_drain_timeout",
+                operation="drain_queue",
+                timeout_seconds=shutdown_drain_seconds,
+                remaining=queue.qsize(),
+            )
+
+        try:
+            queue.put_nowait(_POISON_PILL)
+        except asyncio.QueueFull:
+            await queue.put(_POISON_PILL)
+
+        await consumer_task
+    finally:
+        transport.close()
+        for sig in shutdown_signals:
+            try:
+                loop.remove_signal_handler(sig)
+            except (NotImplementedError, RuntimeError):
+                pass
+        if on_shutdown is not None:
+            on_shutdown()
+        logger.info(
+            "shutdown_complete",
+            operation="shutdown",
+            queue_drained=queue_drained,
             remaining=queue.qsize(),
         )
-
-    try:
-        queue.put_nowait(_POISON_PILL)
-    except asyncio.QueueFull:
-        await queue.put(_POISON_PILL)
-
-    await consumer_task
-    transport.close()

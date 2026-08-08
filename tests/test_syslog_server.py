@@ -178,6 +178,85 @@ async def test_run_async_syslog_server_graceful_shutdown(
     shutdown_callbacks[0]()
     await asyncio.wait_for(server_task, timeout=5)
 
+
+@pytest.mark.asyncio
+async def test_run_async_syslog_server_invokes_on_shutdown_callback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loop = asyncio.get_running_loop()
+    shutdown_callbacks: list[Callable[[], None]] = []
+
+    def capture_signal_handler(
+        sig: signal.Signals, callback: Callable[[], None]
+    ) -> None:
+        shutdown_callbacks.append(callback)
+
+    monkeypatch.setattr(loop, "add_signal_handler", capture_signal_handler)
+
+    released = {"called": False}
+    parser = MagicMock()
+    parser.parse_log_line.return_value = None
+
+    server_task = asyncio.create_task(
+        run_async_syslog_server(
+            bind_address="127.0.0.1",
+            port=0,
+            parser=parser,
+            process_event=lambda _event: None,
+            queue_maxsize=10,
+            shutdown_drain_seconds=1,
+            on_shutdown=lambda: released.update(called=True),
+        )
+    )
+
+    await asyncio.sleep(0.1)
+    shutdown_callbacks[0]()
+    await asyncio.wait_for(server_task, timeout=5)
+    assert released["called"] is True
+
+
+@pytest.mark.asyncio
+async def test_run_async_syslog_server_logs_shutdown_lifecycle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loop = asyncio.get_running_loop()
+    shutdown_callbacks: list[Callable[[], None]] = []
+
+    def capture_signal_handler(
+        sig: signal.Signals, callback: Callable[[], None]
+    ) -> None:
+        shutdown_callbacks.append(callback)
+
+    monkeypatch.setattr(loop, "add_signal_handler", capture_signal_handler)
+
+    info_events: list[str] = []
+    import hacklog.syslog_server as syslog_server_module
+
+    def capture_info(event: str, **kwargs: object) -> None:
+        info_events.append(event)
+
+    monkeypatch.setattr(syslog_server_module.logger, "info", capture_info)
+
+    parser = MagicMock()
+    parser.parse_log_line.return_value = None
+    server_task = asyncio.create_task(
+        run_async_syslog_server(
+            bind_address="127.0.0.1",
+            port=0,
+            parser=parser,
+            process_event=lambda _event: None,
+            queue_maxsize=10,
+            shutdown_drain_seconds=1,
+        )
+    )
+
+    await asyncio.sleep(0.1)
+    shutdown_callbacks[0]()
+    await asyncio.wait_for(server_task, timeout=5)
+
+    assert "shutdown_started" in info_events
+    assert "shutdown_complete" in info_events
+
 @pytest.mark.asyncio
 async def test_end_to_end_udp_parse_and_process_wo002_corpus() -> None:
     """Send a WO-002 corpus syslog line over UDP and verify parse + process_event."""
