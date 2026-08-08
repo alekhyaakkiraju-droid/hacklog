@@ -15,6 +15,7 @@ from entities import EventLog, SyslogMsg, User  # noqa: E402
 from parse import Parser  # noqa: E402
 from scoring import ScoringEngine  # noqa: E402
 
+
 def test_pipeline_parse_to_score_with_injected_mocks() -> None:
     syslog_line = (
         "<14>sshd[3070]: Accepted publickey for nrhine from 10.42.10.2 port 2005 ssh2"

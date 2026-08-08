@@ -8,6 +8,7 @@ from datetime import datetime
 
 import pytest
 
+from hacklog import read_csv as read_csv_module
 from hacklog.read_csv import (
     CSV_DATETIME_FORMAT_ENV,
     ReadCSVFiles,
@@ -40,12 +41,17 @@ def test_parse_csv_datetime_invalid_raises(raw_value: str) -> None:
 
 
 def test_parse_csv_datetime_none_logs_and_raises(
-    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    caplog.set_level("ERROR")
+    logged: list[str] = []
+
+    def capture_error(message: str) -> None:
+        logged.append(message)
+
+    monkeypatch.setattr(read_csv_module.logger, "error", capture_error)
     with pytest.raises(ValueError, match="value cannot be None"):
         parse_csv_datetime(None)
-    assert any("value cannot be None" in record.message for record in caplog.records)
+    assert any("value cannot be None" in message for message in logged)
 
 
 def test_get_csv_datetime_format_reads_env(
@@ -68,8 +74,13 @@ def test_format_syslog_datetime_matches_parser_expectation() -> None:
     assert format_syslog_datetime(event_time) == "2013-09-23 11:16:48"
 
 
-def test_log_messages_success_test_enabled(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level("INFO")
+def test_log_messages_success_test_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    logged: list[str] = []
+    monkeypatch.setattr(
+        read_csv_module.logger,
+        "info",
+        lambda message: logged.append(message),
+    )
     reader = ReadCSVFiles(test_enabled=True)
 
     reader.log_messages(
@@ -82,14 +93,19 @@ def test_log_messages_success_test_enabled(caplog: pytest.LogCaptureFixture) -> 
         }
     )
 
-    assert len(caplog.records) == 1
-    message = caplog.records[0].message
+    assert len(logged) == 1
+    message = logged[0]
     assert "Accepted publickey for alice" in message
     assert "DATE_TIME 2013-09-23 11:16:48 HOST ae1-app80-prd" in message
 
 
-def test_log_messages_failure_test_enabled(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level("INFO")
+def test_log_messages_failure_test_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    logged: list[str] = []
+    monkeypatch.setattr(
+        read_csv_module.logger,
+        "info",
+        lambda message: logged.append(message),
+    )
     reader = ReadCSVFiles(test_enabled=True)
 
     reader.log_messages(
@@ -102,8 +118,8 @@ def test_log_messages_failure_test_enabled(caplog: pytest.LogCaptureFixture) -> 
         }
     )
 
-    assert len(caplog.records) == 1
-    message = caplog.records[0].message
+    assert len(logged) == 1
+    message = logged[0]
     assert "authentication failure" in message
     assert "user=bob" in message
     assert "DATE_TIME 2013-10-05 14:30:30 HOST db-staging-02" in message
@@ -134,9 +150,23 @@ def test_resolve_csv_input_path_rejects_traversal(tmp_path) -> None:
 
 
 def test_read_line_generate_logs_skips_invalid_rows(
-    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    caplog.set_level("INFO")
+    info_messages: list[str] = []
+    error_messages: list[str] = []
+
+    monkeypatch.setattr(
+        read_csv_module.logger,
+        "info",
+        lambda message: info_messages.append(message),
+    )
+    monkeypatch.setattr(
+        read_csv_module.logger,
+        "error",
+        lambda message, *args: error_messages.append(
+            message % args if args else message
+        ),
+    )
     reader = ReadCSVFiles(test_enabled=True)
     csv_buffer = io.StringIO(
         "Date Time,User,IP,Login_Status,Server_Name\n"
@@ -145,8 +175,6 @@ def test_read_line_generate_logs_skips_invalid_rows(
     )
     reader.read_line_generate_logs(csv.reader(csv_buffer))
 
-    info_messages = [record.message for record in caplog.records if record.levelname == "INFO"]
-    error_messages = [record.message for record in caplog.records if record.levelname == "ERROR"]
     assert len(info_messages) == 1
     assert "Accepted publickey for bob" in info_messages[0]
     assert any("Skipping CSV row 2" in message for message in error_messages)

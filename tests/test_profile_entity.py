@@ -17,6 +17,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 from entities import Profile, ProfileType  # noqa: E402
 from services import UpdateService  # noqa: E402
 
+
 @pytest.mark.parametrize(
     "profile_type",
     [

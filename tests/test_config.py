@@ -23,6 +23,7 @@ LEGACY_THRESHOLDS = {
     "scare_date_expire_days": 1,
 }
 
+
 def _set_required_smtp_env(
     monkeypatch: pytest.MonkeyPatch,
     *,
@@ -35,6 +36,7 @@ def _set_required_smtp_env(
     if include_host:
         monkeypatch.setenv("HACKLOG_SMTP_HOST", "smtp.example.com")
         monkeypatch.setenv("HACKLOG_SMTP_PORT", "587")
+
 
 @pytest.fixture(autouse=True)
 def isolated_hacklog_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -50,10 +52,12 @@ def isolated_hacklog_env(monkeypatch: pytest.MonkeyPatch) -> None:
     ):
         monkeypatch.delenv(key, raising=False)
 
+
 def test_scoring_defaults_match_legacy_constants() -> None:
     scoring = ScoringConfig()
     for field, expected in {**LEGACY_WEIGHTS, **LEGACY_THRESHOLDS}.items():
         assert getattr(scoring, field) == expected
+
 
 def test_load_config_applies_scoring_defaults_with_required_smtp(
     monkeypatch: pytest.MonkeyPatch,
@@ -63,6 +67,7 @@ def test_load_config_applies_scoring_defaults_with_required_smtp(
 
     for field, expected in {**LEGACY_WEIGHTS, **LEGACY_THRESHOLDS}.items():
         assert getattr(config.scoring, field) == expected
+
 
 def test_env_var_override_for_smtp(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_smtp_env(monkeypatch)
@@ -76,6 +81,7 @@ def test_env_var_override_for_smtp(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.smtp.username == "alerts@example.com"
     assert config.smtp.recipient == "soc@example.com"
 
+
 def test_missing_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "alerts@example.com")
     monkeypatch.setenv("HACKLOG_SMTP_SENDER", "alerts@example.com")
@@ -87,6 +93,7 @@ def test_missing_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> No
 
     message = str(exc_info.value)
     assert "HACKLOG_SMTP_PASSWORD" in message
+
 
 def test_empty_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACKLOG_SMTP_USER", "alerts@example.com")
@@ -101,6 +108,7 @@ def test_empty_smtp_password_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None
     assert "HACKLOG_SMTP_PASSWORD" in message
     assert "environment variable is required" in message
 
+
 def test_invalid_port_raises_validation_error(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_smtp_env(monkeypatch)
     monkeypatch.setenv("HACKLOG_SMTP_PORT", "-1")
@@ -109,6 +117,7 @@ def test_invalid_port_raises_validation_error(monkeypatch: pytest.MonkeyPatch) -
         load_config()
 
     assert "port" in str(exc_info.value).lower()
+
 
 def test_invalid_scoring_weight_raises_validation_error(
     monkeypatch: pytest.MonkeyPatch,
@@ -120,6 +129,7 @@ def test_invalid_scoring_weight_raises_validation_error(
         load_config()
 
     assert "hours_weight" in str(exc_info.value)
+
 
 def test_yaml_file_loading(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_smtp_env(monkeypatch, include_host=False)
@@ -145,6 +155,7 @@ def test_yaml_file_loading(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.syslog.port == 1514
     assert config.scoring.hours_weight == 12
     assert config.smtp.host == "yaml-smtp.example"
+
 
 def test_env_vars_override_yaml(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_smtp_env(monkeypatch)

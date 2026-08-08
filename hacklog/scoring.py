@@ -12,6 +12,7 @@ from services import UpdateService
 
 logger = get_logger("scoring")
 
+
 class ScoringEngine:
     """Score authentication events and trigger alerts using injected services."""
 
@@ -220,6 +221,7 @@ class ScoringEngine:
         if IpLocation.check_ip_for_internal(ip_address):
             ip_score = Weight.INT
         return int(ip_score)
+
 
 def smoke_test_process(
     update_service: UpdateService, alert_service: AlertService

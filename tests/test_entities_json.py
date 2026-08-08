@@ -17,6 +17,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 from entities import Profile, ProfileType, create_tables  # noqa: E402
 from session import Session  # noqa: E402
 
+
 @pytest.fixture
 def json_db_engine(tmp_path: Path):
     db_file = tmp_path / "profiles.db"
@@ -25,6 +26,7 @@ def json_db_engine(tmp_path: Path):
     Session.configure(bind=engine)
     yield engine
     engine.dispose()
+
 
 PROFILE_FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "profile_fixtures.json").read_text(
@@ -38,6 +40,7 @@ PROFILE_CASES = [
     (ProfileType.SERVER, "servers"),
     (ProfileType.IP_ADDRESS, "ipAddress"),
 ]
+
 
 @pytest.mark.parametrize(("profile_type", "fixture_key"), PROFILE_CASES)
 def test_profile_round_trips_through_json(
@@ -61,6 +64,7 @@ def test_profile_round_trips_through_json(
         ).scalar_one()
         assert loaded.profile == profile_data
 
+
 @pytest.mark.parametrize(("profile_type", "fixture_key"), PROFILE_CASES)
 def test_empty_profile_dict_round_trips(
     json_db_engine,
@@ -68,9 +72,7 @@ def test_empty_profile_dict_round_trips(
     fixture_key: str,
 ) -> None:
     del fixture_key
-    entity = Profile(
-        datetime(2026, 2, 1, 8, 0, 0), "empty-user", profile_type, {}, 0
-    )
+    entity = Profile(datetime(2026, 2, 1, 8, 0, 0), "empty-user", profile_type, {}, 0)
 
     with Session() as session:
         session.add(entity)
@@ -82,6 +84,7 @@ def test_empty_profile_dict_round_trips(
             )
         ).scalar_one()
         assert loaded.profile == {}
+
 
 def test_days_profile_mon_tue_example(json_db_engine) -> None:
     profile = {"Mon": 5, "Tue": 3}

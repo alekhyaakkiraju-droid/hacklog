@@ -32,12 +32,13 @@ PROFILE_TABLES = {
     "ipAddress": PROFILE_FIXTURES["ipAddress"],
 }
 
-MIGRATED_TABLE_NAMES = {
+PROFILE_TYPE_BY_LEGACY_TABLE = {
     "days": "days",
     "hours": "hours",
     "servers": "server",
     "ipAddress": "ipAddress",
 }
+
 
 def _create_legacy_pickle_database(db_path: Path) -> dict[str, dict[str, dict]]:
     engine = create_engine(f"sqlite:///{db_path}")
@@ -78,6 +79,7 @@ def _create_legacy_pickle_database(db_path: Path) -> dict[str, dict[str, dict]]:
     engine.dispose()
     return expected
 
+
 def _run_migration(db_path: Path, repo_root: Path) -> Path:
     backup_path = db_path.with_suffix(db_path.suffix + ".pre-migration.bak")
     alembic_cfg = Config(str(repo_root / "alembic.ini"))
@@ -87,18 +89,21 @@ def _run_migration(db_path: Path, repo_root: Path) -> Path:
     assert backup_path.exists(), "pre-migration backup was not created"
     return backup_path
 
+
 def _load_migrated_profiles(db_path: Path) -> dict[str, dict]:
     engine = create_engine(f"sqlite:///{db_path}")
     migrated: dict[str, dict] = {}
 
     with engine.connect() as connection:
         for table_name in PROFILE_TABLES:
-            migrated_table = MIGRATED_TABLE_NAMES[table_name]
+            profile_type = PROFILE_TYPE_BY_LEGACY_TABLE[table_name]
             row = (
                 connection.execute(
                     sa.text(
-                        f"SELECT username, profile FROM {migrated_table}"
-                    )  # noqa: S608
+                        "SELECT username, profile FROM profiles "
+                        "WHERE profileType = :profile_type"
+                    ),
+                    {"profile_type": profile_type},
                 )
                 .mappings()
                 .one()
@@ -111,6 +116,7 @@ def _load_migrated_profiles(db_path: Path) -> dict[str, dict]:
     engine.dispose()
     return migrated
 
+
 def test_migration_converts_pickle_profiles_to_json(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     db_path = tmp_path / "legacy.db"
@@ -122,6 +128,7 @@ def test_migration_converts_pickle_profiles_to_json(tmp_path: Path) -> None:
     for table_name, fixture in expected.items():
         assert migrated[table_name]["username"] == fixture["username"]
         assert migrated[table_name]["profile"] == fixture["profile"]
+
 
 def test_migration_downgrade_is_best_effort_round_trip(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]

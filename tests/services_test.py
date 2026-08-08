@@ -33,16 +33,17 @@ _smtp_config = SmtpConfig(
 email_service = AlertService(_smtp_config)
 update_service = UpdateService()
 
+
 class ServiceTests(unittest.TestCase):
     def setUp(self):
         self._event_log = EventLog(datetime.now(), "nrhine", "1.2.3.4", True, "prod")
         self._user = User("nrhine", datetime.now(), 10)
-        self._day = Profile(datetime.now(), "nrhine", ProfileType.DAYS, {"1.2.3.5": 1}, 1)
+        self._day = Profile(
+            datetime.now(), "nrhine", ProfileType.DAYS, {"1.2.3.5": 1}, 1
+        )
         self._hour = Profile(datetime.now(), "nrhine", ProfileType.HOURS, {}, 0)
         self._server = Profile(datetime.now(), "nrhine", ProfileType.SERVER, {}, 0)
-        self._ip_addr = Profile(
-            datetime.now(), "nrhine", ProfileType.IP_ADDRESS, {}, 0
-        )
+        self._ip_addr = Profile(datetime.now(), "nrhine", ProfileType.IP_ADDRESS, {}, 0)
         update_service._profile_repository = MagicMock()
         update_service._user_repository = MagicMock()
         update_service._audit_repository = MagicMock()
@@ -103,8 +104,10 @@ class ServiceTests(unittest.TestCase):
         user = update_service.fetch_user(self._event_log)
         self.assertIsInstance(user, User)
 
+
 def main():
     unittest.main()
+
 
 if __name__ == "__main__":
     main()

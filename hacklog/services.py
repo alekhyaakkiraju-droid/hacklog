@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 logger = get_logger("services")
 
+
 class HourRangeEnum:
     EARLY = range(4)
     DAWN = range(4, 8)
@@ -17,6 +18,7 @@ class HourRangeEnum:
     AFTERNOON = range(12, 16)
     EVE = range(16, 20)
     NIGHT = range(20, 24)
+
 
 class UpdateService:
     def __init__(
@@ -43,9 +45,7 @@ class UpdateService:
         ]
         self._range_name = ["early", "dawn", "morning", "afternoon", "eve", "night"]
 
-    def update_and_return_freq_for_profile(
-        self, profile: Profile, value: str
-    ) -> float:
+    def update_and_return_freq_for_profile(self, profile: Profile, value: str) -> float:
         profile_dict = profile.profile
         profile_dict[value] = profile_dict.get(value, 0) + 1
         profile.total_count += 1

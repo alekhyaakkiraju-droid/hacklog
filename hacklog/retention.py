@@ -14,7 +14,6 @@ try:
         AuditRecord,
         EventLog,
         Profile,
-        ProfileType,
         User,
     )
     from hacklog.logging_config import get_logger
@@ -24,13 +23,13 @@ except ImportError:
         AuditRecord,
         EventLog,
         Profile,
-        ProfileType,
         User,
     )
     from logging_config import get_logger  # type: ignore[no-redef]
     from repositories import AuditRepository  # type: ignore[no-redef]
 
 logger = get_logger("retention")
+
 
 class DataRetentionService:
     """Purge old event logs and inactive user profiles on a configurable schedule."""
@@ -212,7 +211,9 @@ class DataRetentionService:
         with self._session_factory() as session:
             # Union of dates across all activity sources
             all_activity = union_all(
-                select(EventLog.username.label("username"), EventLog.date.label("date")),
+                select(
+                    EventLog.username.label("username"), EventLog.date.label("date")
+                ),
                 select(Profile.username.label("username"), Profile.date.label("date")),
             ).subquery("all_activity")
 

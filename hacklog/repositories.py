@@ -14,6 +14,7 @@ logger = get_logger("repositories")
 ProfileEntity = Profile
 ProfileEntityType = ProfileType
 
+
 class BaseRepository:
     """Base repository with injected session factory and transaction helpers."""
 
@@ -40,12 +41,11 @@ class BaseRepository:
                 session.rollback()
                 raise
 
+
 class ProfileRepository(BaseRepository):
     """CRUD for unified Profile rows keyed by profile type and username."""
 
-    def get_profile(
-        self, profile_type: ProfileType, username: str
-    ) -> Profile | None:
+    def get_profile(self, profile_type: ProfileType, username: str) -> Profile | None:
         with self._session_scope() as session:
             return session.execute(
                 select(Profile).where(
@@ -75,6 +75,7 @@ class ProfileRepository(BaseRepository):
                 profile_type=profile.profile_type,
                 username=profile.username,
             )
+
 
 class UserRepository(BaseRepository):
     """User entity persistence."""
@@ -119,6 +120,7 @@ class UserRepository(BaseRepository):
         with self._session_scope() as session:
             session.merge(user)
             session.commit()
+
 
 class AuditRepository(BaseRepository):
     """Append-only event log and audit record persistence."""

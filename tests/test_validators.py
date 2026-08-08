@@ -18,6 +18,7 @@ from tests.fixtures.injection_messages import (
     VALID_SYSLOG_FIXTURES,
 )
 
+
 @pytest.mark.parametrize(
     ("value", "expected_valid"),
     [
@@ -37,6 +38,7 @@ def test_validate_username(value: str, expected_valid: bool) -> None:
     assert isinstance(result, FieldValidationResult)
     assert result.valid is expected_valid
 
+
 @pytest.mark.parametrize(
     ("value", "expected_valid"),
     [
@@ -53,6 +55,7 @@ def test_validate_ip_address(value: str, expected_valid: bool) -> None:
     result = validate_ip_address(value)
     assert result.valid is expected_valid
 
+
 @pytest.mark.parametrize(
     ("value", "expected_valid"),
     [
@@ -68,6 +71,7 @@ def test_validate_hostname(value: str, expected_valid: bool) -> None:
     result = validate_hostname(value)
     assert result.valid is expected_valid
 
+
 def test_validate_parsed_fields_increments_invalid_field_counter() -> None:
     before = messages_dropped_total.labels(
         reason="invalid_field"
@@ -78,11 +82,14 @@ def test_validate_parsed_fields_increments_invalid_field_counter() -> None:
     )._value.get()  # noqa: SLF001
     assert after - before == 1.0
 
+
 def test_validate_parsed_fields_accepts_valid_triplet() -> None:
     assert validate_parsed_fields("alice", "10.42.10.2", "prod-web-01") is True
 
+
 def test_sanitize_for_log_escapes_control_characters() -> None:
     assert "\\x00" in sanitize_for_log("a\x00b")
+
 
 @pytest.mark.parametrize(
     ("ip_address", "vpn", "internal"),
@@ -100,6 +107,7 @@ def test_ip_address_entity_checks_work_with_validated_ips(
     assert validate_ip_address(ip_address).valid is True
     assert IpLocation.check_ip_for_vpn(ip_address) is vpn
     assert IpLocation.check_ip_for_internal(ip_address) is internal
+
 
 @pytest.mark.parametrize(
     ("fixture_name", "expected_parsed"),
@@ -124,6 +132,7 @@ def test_parser_rejects_injection_payloads(
         assert event is not None
     else:
         assert event is None
+
 
 def test_parser_integration_rejects_invalid_ip_before_database_layer() -> None:
     parser = Parser(validate_fields=True)

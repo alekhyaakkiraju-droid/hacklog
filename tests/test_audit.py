@@ -26,6 +26,7 @@ from hacklog.scoring import ScoringEngine  # noqa: E402
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def session_factory(tmp_path: Path):
     engine = create_engine(f"sqlite:///{tmp_path / 'audit_test.db'}")
@@ -36,9 +37,11 @@ def session_factory(tmp_path: Path):
     yield factory
     engine.dispose()
 
+
 @pytest.fixture
 def audit_repository(session_factory) -> AuditRepository:
     return AuditRepository(session_factory)
+
 
 @pytest.fixture
 def event_log() -> EventLog:
@@ -46,9 +49,11 @@ def event_log() -> EventLog:
         datetime(2026, 3, 10, 14, 0, 0), "testuser", "10.0.0.5", False, "prod-host"
     )
 
+
 @pytest.fixture
 def user() -> User:
     return User("testuser", datetime(2026, 3, 10, 14, 0, 0), 0)
+
 
 @pytest.fixture
 def smtp_config() -> SmtpConfig:
@@ -62,11 +67,15 @@ def smtp_config() -> SmtpConfig:
         use_tls=True,
     )
 
+
 # ---------------------------------------------------------------------------
 # AuditRecord entity tests
 # ---------------------------------------------------------------------------
 
-def test_audit_record_fields_stored_correctly(audit_repository, session_factory) -> None:
+
+def test_audit_record_fields_stored_correctly(
+    audit_repository, session_factory
+) -> None:
     ts = datetime(2026, 3, 10, 14, 0, 0, tzinfo=UTC)
     record = AuditRecord(
         timestamp=ts,
@@ -91,6 +100,7 @@ def test_audit_record_fields_stored_correctly(audit_repository, session_factory)
     assert loaded.details["total_score"] == 42.0
     assert loaded.id is not None  # auto-increment primary key
 
+
 def test_audit_record_id_autoincrement(audit_repository, session_factory) -> None:
     for i in range(3):
         record = AuditRecord(
@@ -110,19 +120,23 @@ def test_audit_record_id_autoincrement(audit_repository, session_factory) -> Non
     ids = [r.id for r in records]
     assert len(set(ids)) == 3  # all unique
 
+
 # ---------------------------------------------------------------------------
 # AuditRepository append-only tests
 # ---------------------------------------------------------------------------
+
 
 def test_audit_repository_has_no_update_method(audit_repository) -> None:
     """AuditRepository must not expose an update method — append-only."""
     assert not hasattr(audit_repository, "update_audit_record")
     assert not hasattr(audit_repository, "update")
 
+
 def test_audit_repository_has_no_delete_method(audit_repository) -> None:
     """AuditRepository must not expose a delete method — append-only."""
     assert not hasattr(audit_repository, "delete_audit_record")
     assert not hasattr(audit_repository, "delete")
+
 
 def test_audit_repository_save_audit_record_persists(
     audit_repository, session_factory
@@ -144,9 +158,11 @@ def test_audit_repository_save_audit_record_persists(
     assert len(rows) == 1
     assert rows[0].action == "alert_sent"
 
+
 # ---------------------------------------------------------------------------
 # ScoringEngine audit integration tests
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_services(user: User):
     update_service = MagicMock()
@@ -159,6 +175,7 @@ def _make_mock_services(user: User):
     update_service.update_user_scare_count.side_effect = lambda u: u
     return update_service, alert_service
 
+
 def test_scoring_engine_creates_audit_record_for_score_calculated(
     audit_repository, session_factory, event_log, user
 ) -> None:
@@ -167,9 +184,13 @@ def test_scoring_engine_creates_audit_record_for_score_calculated(
     engine.process_event_log(event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "score_calculated")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "score_calculated")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) >= 1
     rec = records[0]
@@ -181,6 +202,7 @@ def test_scoring_engine_creates_audit_record_for_score_calculated(
     assert "total_score" in rec.details
     assert "alert_decision" in rec.details
 
+
 def test_scoring_engine_audit_record_contains_all_dimension_scores(
     audit_repository, session_factory, event_log, user
 ) -> None:
@@ -189,9 +211,13 @@ def test_scoring_engine_audit_record_contains_all_dimension_scores(
     engine.process_event_log(event_log)
 
     with session_factory() as session:
-        rec = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "score_calculated")
-        ).scalars().first()
+        rec = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "score_calculated")
+            )
+            .scalars()
+            .first()
+        )
 
     assert rec is not None
     for field in (
@@ -204,6 +230,7 @@ def test_scoring_engine_audit_record_contains_all_dimension_scores(
         "total_score",
     ):
         assert field in rec.details, f"Missing dimension score: {field}"
+
 
 def test_scoring_engine_scare_count_update_creates_audit_record(
     audit_repository, session_factory, event_log
@@ -226,16 +253,20 @@ def test_scoring_engine_scare_count_update_creates_audit_record(
     engine.process_event_log(event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "scare_count_updated")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "scare_count_updated")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) == 1
+
 
 def test_scoring_engine_scare_count_reset_creates_audit_record(
     audit_repository, session_factory, event_log
 ) -> None:
-    from entities import Threshold
 
     # User with old scare date so reset triggers
     user = User("testuser", datetime(2026, 1, 1, 0, 0, 0), 0)
@@ -253,15 +284,21 @@ def test_scoring_engine_scare_count_reset_creates_audit_record(
     engine.process_event_log(event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "scare_count_reset")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "scare_count_reset")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) == 1
+
 
 # ---------------------------------------------------------------------------
 # AlertService audit integration tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_alert_service_creates_audit_record_on_success(
@@ -276,9 +313,13 @@ async def test_alert_service_creates_audit_record_on_success(
     await service.send_alert(user, event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "alert_sent")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "alert_sent")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) == 1
     rec = records[0]
@@ -286,6 +327,7 @@ async def test_alert_service_creates_audit_record_on_success(
     assert rec.resource == event_log.server
     assert rec.details is not None
     assert rec.details["reason"] == "smtp_success"
+
 
 @pytest.mark.asyncio
 async def test_alert_service_creates_audit_record_on_circuit_open(
@@ -304,13 +346,18 @@ async def test_alert_service_creates_audit_record_on_circuit_open(
     await service.send_alert(user, event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "alert_suppressed")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "alert_suppressed")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) == 1
     rec = records[0]
     assert rec.details["reason"] == "circuit_open"
+
 
 @pytest.mark.asyncio
 async def test_alert_service_creates_audit_record_on_smtp_failure(
@@ -329,24 +376,33 @@ async def test_alert_service_creates_audit_record_on_smtp_failure(
     await service.send_alert(user, event_log)
 
     with session_factory() as session:
-        records = session.execute(
-            select(AuditRecord).where(AuditRecord.action == "alert_suppressed")
-        ).scalars().all()
+        records = (
+            session.execute(
+                select(AuditRecord).where(AuditRecord.action == "alert_suppressed")
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(records) == 1
+
 
 # ---------------------------------------------------------------------------
 # System integration test: full pipeline end-to-end
 # ---------------------------------------------------------------------------
 
+
 def test_full_pipeline_creates_audit_record_with_correct_fields(
     audit_repository, session_factory
 ) -> None:
     """Process an EventLog through the full scoring pipeline and verify audit record."""
-    from entities import Threshold
 
     event = EventLog(
-        datetime(2026, 4, 1, 9, 0, 0), "integration-user", "10.0.0.99", False, "int-host"
+        datetime(2026, 4, 1, 9, 0, 0),
+        "integration-user",
+        "10.0.0.99",
+        False,
+        "int-host",
     )
     user = User("integration-user", datetime(2026, 4, 1, 9, 0, 0), 0)
     user.last_scare_date = datetime(2026, 4, 1, 9, 0, 0)

@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
-        run: pip install --only-binary=:all: -r requirements-ci.txt
+        run: "pip install --only-binary=:all: -r requirements-ci.txt"
 
       - name: Ruff
         run: ruff check hacklog/ tests/

@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import SecretStr
 from sqlalchemy import func, select
 
 _TESTS_DIR = Path(__file__).resolve().parent
@@ -21,21 +20,23 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
         sys.path.insert(0, str(_path))
 
 from hacklog.alerting import AlertService  # noqa: E402
-from hacklog.config import SmtpConfig, SyslogConfig  # noqa: E402
+from hacklog.config import SyslogConfig  # noqa: E402
 from hacklog.entities import (  # noqa: E402
     EventLog,
     Profile,
     ProfileType,
-    SyslogMsg,
     Threshold,
     User,
     Weight,
-    create_tables,
 )
 from hacklog.parse import Parser  # noqa: E402
 from hacklog.scoring import ScoringEngine  # noqa: E402
-from hacklog.services import UpdateService, HourRangeEnum  # noqa: E402
-from hacklog.syslog_server import SyslogProtocol, build_validator, message_consumer  # noqa: E402
+from hacklog.services import HourRangeEnum, UpdateService  # noqa: E402
+from hacklog.syslog_server import (  # noqa: E402
+    SyslogProtocol,
+    build_validator,
+    message_consumer,
+)
 
 TOLERANCE = 1e-9
 
@@ -320,7 +321,9 @@ def test_e2e_golden_corpus_scoring_parity(scoring_golden_events) -> None:
         expected = raw["expected"]
         update_service.update_and_return_hour_freq_for_user.return_value = freqs["hour"]
         update_service.update_and_return_day_freq_for_user.return_value = freqs["day"]
-        update_service.update_and_return_server_freq_for_user.return_value = freqs["server"]
+        update_service.update_and_return_server_freq_for_user.return_value = freqs[
+            "server"
+        ]
         update_service.update_and_return_ip_freq_for_user.return_value = freqs["ip"]
 
         success = engine.calculate_success_score(event.success)

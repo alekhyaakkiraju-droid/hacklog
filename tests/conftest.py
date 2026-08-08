@@ -20,7 +20,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 
 from hacklog.alerting import AlertService  # noqa: E402
 from hacklog.config import SmtpConfig, SyslogConfig  # noqa: E402
-from hacklog.entities import EventLog, Threshold, User, create_tables  # noqa: E402
+from hacklog.entities import EventLog, User, create_tables  # noqa: E402
 from hacklog.scoring import ScoringEngine  # noqa: E402
 from hacklog.services import UpdateService  # noqa: E402
 

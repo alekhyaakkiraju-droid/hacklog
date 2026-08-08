@@ -37,13 +37,16 @@ DEFAULT_RETRY_BASE_DELAY_SECONDS = 1.0
 
 SmtpSender = Callable[[MIMEMultipart, SmtpConfig], Awaitable[None]]
 
+
 class CircuitState(str, Enum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
 
+
 class CircuitBreakerOpenError(Exception):
     """Raised when the circuit breaker rejects a request."""
+
 
 class CircuitBreaker:
     """SMTP circuit breaker with closed, open, and half-open states."""
@@ -141,6 +144,7 @@ class CircuitBreaker:
                     failure_count=self._failure_count,
                 )
 
+
 class DeadLetterWriter:
     """Append failed alerts as JSON lines with size-based rotation."""
 
@@ -188,11 +192,13 @@ class DeadLetterWriter:
             rotated_path=str(rotated),
         )
 
+
 def _format_alert_timestamp(event_log: EventLog) -> str:
     event_date = event_log.date
     if isinstance(event_date, datetime):
         return event_date.isoformat()
     return str(event_date)
+
 
 def build_alert_message(
     user: User,
@@ -219,6 +225,7 @@ def build_alert_message(
     msg.attach(MIMEText(text, "plain"))
     return msg
 
+
 async def default_smtp_sender(message: MIMEMultipart, smtp_config: SmtpConfig) -> None:
     await aiosmtplib.send(
         message,
@@ -229,12 +236,14 @@ async def default_smtp_sender(message: MIMEMultipart, smtp_config: SmtpConfig) -
         start_tls=smtp_config.use_tls,
     )
 
+
 def is_transient_smtp_error(exc: BaseException) -> bool:
     if isinstance(exc, (SMTPConnectError, TimeoutError, OSError, ConnectionError)):
         return True
     if isinstance(exc, SMTPException) and not isinstance(exc, SMTPAuthenticationError):
         return True
     return False
+
 
 class AlertService:
     """Async SMTP alert delivery with circuit breaker and retry logic."""
