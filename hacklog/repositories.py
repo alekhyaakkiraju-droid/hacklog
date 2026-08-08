@@ -3,18 +3,16 @@
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
-from typing import TypeVar
 
-from entities import AuditRecord, Days, EventLog, Hours, IpAddress, Server, User
+from entities import AuditRecord, EventLog, Profile, ProfileType, User
 from logging_config import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 logger = get_logger("repositories")
 
-ProfileEntity = Days | Hours | Server | IpAddress
-ProfileEntityType = type[Days] | type[Hours] | type[Server] | type[IpAddress]
-T = TypeVar("T")
+ProfileEntity = Profile
+ProfileEntityType = ProfileType
 
 class BaseRepository:
     """Base repository with injected session factory and transaction helpers."""
@@ -43,35 +41,38 @@ class BaseRepository:
                 raise
 
 class ProfileRepository(BaseRepository):
-    """Parameterized CRUD for Days, Hours, Server, and IpAddress profiles."""
+    """CRUD for unified Profile rows keyed by profile type and username."""
 
     def get_profile(
-        self, entity_class: ProfileEntityType, username: str
-    ) -> ProfileEntity | None:
+        self, profile_type: ProfileType, username: str
+    ) -> Profile | None:
         with self._session_scope() as session:
             return session.execute(
-                select(entity_class).where(entity_class.username == username)
+                select(Profile).where(
+                    Profile.profile_type == profile_type.value,
+                    Profile.username == username,
+                )
             ).scalar_one_or_none()
 
-    def save_profile(self, profile: ProfileEntity) -> None:
+    def save_profile(self, profile: Profile) -> None:
         with self._session_scope() as session:
             session.add(profile)
             session.commit()
             logger.debug(
                 "profile_saved",
                 operation="save_profile",
-                profile_type=type(profile).__name__,
+                profile_type=profile.profile_type,
                 username=profile.username,
             )
 
-    def update_profile(self, profile: ProfileEntity) -> None:
+    def update_profile(self, profile: Profile) -> None:
         with self._session_scope() as session:
             session.merge(profile)
             session.commit()
             logger.debug(
                 "profile_updated",
                 operation="update_profile",
-                profile_type=type(profile).__name__,
+                profile_type=profile.profile_type,
                 username=profile.username,
             )
 

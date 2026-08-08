@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from alerting import AlertService
-from entities import AuditRecord, EventLog, IpAddress, Threshold, User, Weight
+from entities import AuditRecord, EventLog, IpLocation, Threshold, User, Weight
 from logging_config import get_logger
 from repositories import AuditRepository
 from services import UpdateService
@@ -215,9 +215,9 @@ class ScoringEngine:
     @staticmethod
     def calculate_ip_location_score(ip_address: str) -> int:
         ip_score = Weight.EXT
-        if IpAddress.check_ip_for_vpn(ip_address):
+        if IpLocation.check_ip_for_vpn(ip_address):
             ip_score = Weight.VPN
-        if IpAddress.check_ip_for_internal(ip_address):
+        if IpLocation.check_ip_for_internal(ip_address):
             ip_score = Weight.INT
         return int(ip_score)
 

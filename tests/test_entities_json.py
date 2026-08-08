@@ -1,4 +1,4 @@
-"""Unit tests for JSON profile columns on entity models."""
+"""Unit tests for JSON profile columns on the unified Profile entity."""
 
 import json
 import sys
@@ -14,7 +14,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from entities import Days, Hours, IpAddress, Server, create_tables  # noqa: E402
+from entities import Profile, ProfileType, create_tables  # noqa: E402
 from session import Session  # noqa: E402
 
 @pytest.fixture
@@ -32,55 +32,70 @@ PROFILE_FIXTURES = json.loads(
     )
 )
 
-ENTITY_CASES = [
-    (Days, "days"),
-    (Hours, "hours"),
-    (Server, "servers"),
-    (IpAddress, "ipAddress"),
+PROFILE_CASES = [
+    (ProfileType.DAYS, "days"),
+    (ProfileType.HOURS, "hours"),
+    (ProfileType.SERVER, "servers"),
+    (ProfileType.IP_ADDRESS, "ipAddress"),
 ]
 
-@pytest.mark.parametrize(("entity_cls", "fixture_key"), ENTITY_CASES)
+@pytest.mark.parametrize(("profile_type", "fixture_key"), PROFILE_CASES)
 def test_profile_round_trips_through_json(
     json_db_engine,
-    entity_cls: type,
+    profile_type: ProfileType,
     fixture_key: str,
 ) -> None:
-    profile = PROFILE_FIXTURES[fixture_key]
-    entity = entity_cls(datetime(2026, 1, 15, 12, 0, 0), "nrhine", profile, 0)
+    profile_data = PROFILE_FIXTURES[fixture_key]
+    entity = Profile(
+        datetime(2026, 1, 15, 12, 0, 0), "nrhine", profile_type, profile_data, 0
+    )
 
     with Session() as session:
         session.add(entity)
         session.commit()
         loaded = session.execute(
-            select(entity_cls).where(entity_cls.username == "nrhine")
+            select(Profile).where(
+                Profile.username == "nrhine",
+                Profile.profile_type == profile_type.value,
+            )
         ).scalar_one()
-        assert loaded.profile == profile
+        assert loaded.profile == profile_data
 
-@pytest.mark.parametrize(("entity_cls", "fixture_key"), ENTITY_CASES)
+@pytest.mark.parametrize(("profile_type", "fixture_key"), PROFILE_CASES)
 def test_empty_profile_dict_round_trips(
     json_db_engine,
-    entity_cls: type,
+    profile_type: ProfileType,
     fixture_key: str,
 ) -> None:
     del fixture_key
-    entity = entity_cls(datetime(2026, 2, 1, 8, 0, 0), "empty-user", {}, 0)
+    entity = Profile(
+        datetime(2026, 2, 1, 8, 0, 0), "empty-user", profile_type, {}, 0
+    )
 
     with Session() as session:
         session.add(entity)
         session.commit()
         loaded = session.execute(
-            select(entity_cls).where(entity_cls.username == "empty-user")
+            select(Profile).where(
+                Profile.username == "empty-user",
+                Profile.profile_type == profile_type.value,
+            )
         ).scalar_one()
         assert loaded.profile == {}
 
 def test_days_profile_mon_tue_example(json_db_engine) -> None:
     profile = {"Mon": 5, "Tue": 3}
-    entity = Days(datetime(2026, 3, 1, 0, 0, 0), "weekday-user", profile, 8)
+    entity = Profile(
+        datetime(2026, 3, 1, 0, 0, 0), "weekday-user", ProfileType.DAYS, profile, 8
+    )
 
     with Session() as session:
         session.add(entity)
         session.commit()
         loaded = session.execute(
-            select(Days).where(Days.username == "weekday-user")
+            select(Profile).where(
+                Profile.username == "weekday-user",
+                Profile.profile_type == ProfileType.DAYS.value,
+            )
         ).scalar_one()
         assert loaded.profile == {"Mon": 5, "Tue": 3}

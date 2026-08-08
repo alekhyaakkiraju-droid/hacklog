@@ -15,11 +15,9 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
         sys.path.insert(0, str(_path))
 
 from entities import (  # noqa: E402
-    Days,
     EventLog,
-    Hours,
-    IpAddress,
-    Server,
+    Profile,
+    ProfileType,
     User,
     create_tables,
 )
@@ -52,24 +50,26 @@ def audit_repository(session_factory) -> AuditRepository:
     return AuditRepository(session_factory)
 
 @pytest.mark.parametrize(
-    ("entity_cls", "username"),
+    ("profile_type", "username"),
     [
-        (Days, "days-user"),
-        (Hours, "hours-user"),
-        (Server, "servers-user"),
-        (IpAddress, "ip-user"),
+        (ProfileType.DAYS, "days-user"),
+        (ProfileType.HOURS, "hours-user"),
+        (ProfileType.SERVER, "servers-user"),
+        (ProfileType.IP_ADDRESS, "ip-user"),
     ],
 )
-def test_profile_repository_crud(entity_cls, username, profile_repository) -> None:
-    profile = entity_cls(datetime(2026, 1, 1), username, {"Mon": 1}, 1)
+def test_profile_repository_crud(
+    profile_type: ProfileType, username: str, profile_repository
+) -> None:
+    profile = Profile(datetime(2026, 1, 1), username, profile_type, {"Mon": 1}, 1)
     profile_repository.save_profile(profile)
-    loaded = profile_repository.get_profile(entity_cls, username)
+    loaded = profile_repository.get_profile(profile_type, username)
     assert loaded is not None
     assert loaded.username == username
     loaded.profile = {"Mon": 2, "Tue": 1}
     loaded.total_count = 3
     profile_repository.update_profile(loaded)
-    reloaded = profile_repository.get_profile(entity_cls, username)
+    reloaded = profile_repository.get_profile(profile_type, username)
     assert reloaded is not None
     assert reloaded.profile["Mon"] == 2
 
@@ -94,25 +94,39 @@ def test_audit_repository_append_only(audit_repository, session_factory) -> None
     assert len(count) == 1
 
 def test_transaction_rolls_back_on_failure(profile_repository, session_factory) -> None:
-    profile = Days(datetime(2026, 4, 1), "rollback-user", {"Mon": 1}, 1)
+    profile = Profile(
+        datetime(2026, 4, 1), "rollback-user", ProfileType.DAYS, {"Mon": 1}, 1
+    )
     profile_repository.save_profile(profile)
 
     class BrokenProfileRepository(ProfileRepository):
-        def save_profile(self, profile: Days | Hours | Server | IpAddress) -> None:
+        def save_profile(self, profile: Profile) -> None:
             with self.transaction() as session:
                 session.add(
-                    Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1)
+                    Profile(
+                        datetime(2026, 4, 1),
+                        "rollback-user",
+                        ProfileType.HOURS,
+                        {"early": 1},
+                        1,
+                    )
                 )
                 raise RuntimeError("forced failure")
 
     broken = BrokenProfileRepository(session_factory)
     with pytest.raises(RuntimeError):
         broken.save_profile(
-            Hours(datetime(2026, 4, 1), "rollback-user", {"early": 1}, 1)
+            Profile(
+                datetime(2026, 4, 1),
+                "rollback-user",
+                ProfileType.HOURS,
+                {"early": 1},
+                1,
+            )
         )
 
-    assert profile_repository.get_profile(Hours, "rollback-user") is None
-    assert profile_repository.get_profile(Days, "rollback-user") is not None
+    assert profile_repository.get_profile(ProfileType.HOURS, "rollback-user") is None
+    assert profile_repository.get_profile(ProfileType.DAYS, "rollback-user") is not None
 
 def test_repositories_use_injected_session_factory(session_factory) -> None:
     repo = ProfileRepository(session_factory)
