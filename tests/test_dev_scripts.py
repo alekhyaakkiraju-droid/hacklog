@@ -1,4 +1,4 @@
-"""Tests for local developer run/stop scripts (WO-039)."""
+"""Tests for local developer run/stop scripts (WO-039, WO-042)."""
 
 from __future__ import annotations
 
@@ -73,3 +73,31 @@ def test_stop_sh_exits_cleanly_when_not_running(tmp_path: Path) -> None:
     )
     assert result.returncode == 0
     assert "not running" in result.stdout.lower()
+
+
+def test_legacy_hacklog_run_stop_scripts_removed() -> None:
+    """WO-042: crude hacklog/run.sh and hacklog/stop.sh must not exist."""
+    assert not (REPO_ROOT / "hacklog" / "run.sh").exists()
+    assert not (REPO_ROOT / "hacklog" / "stop.sh").exists()
+
+
+def test_modern_dev_tooling_replaces_legacy_scripts() -> None:
+    """WO-042: Makefile + scripts/ provide developer convenience."""
+    assert (REPO_ROOT / "Makefile").exists()
+    assert (REPO_ROOT / "docker-compose.yml").exists()
+    assert (REPO_ROOT / "deploy" / "hacklog.service").exists()
+    for name in ("run.sh", "stop.sh"):
+        path = SCRIPTS / name
+        assert path.exists()
+        assert path.read_text(encoding="utf-8").splitlines()[0] == "#!/bin/sh"
+
+
+def test_run_sh_does_not_use_grep_kill_pattern(run_sh: str) -> None:
+    assert "grep" not in run_sh
+    assert "kill -9" not in run_sh
+
+
+def test_stop_sh_uses_pid_file_not_ps_grep(stop_sh: str) -> None:
+    assert "PIDFILE" in stop_sh or "pid" in stop_sh.lower()
+    assert "ps aux" not in stop_sh
+    assert "grep" not in stop_sh
