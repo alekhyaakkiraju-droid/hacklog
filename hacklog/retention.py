@@ -12,11 +12,9 @@ from sqlalchemy.orm import Session
 try:
     from hacklog.entities import (
         AuditRecord,
-        Days,
         EventLog,
-        Hours,
-        IpAddress,
-        Server,
+        Profile,
+        ProfileType,
         User,
     )
     from hacklog.logging_config import get_logger
@@ -24,19 +22,15 @@ try:
 except ImportError:
     from entities import (  # type: ignore[no-redef]
         AuditRecord,
-        Days,
         EventLog,
-        Hours,
-        IpAddress,
-        Server,
+        Profile,
+        ProfileType,
         User,
     )
     from logging_config import get_logger  # type: ignore[no-redef]
     from repositories import AuditRepository  # type: ignore[no-redef]
 
 logger = get_logger("retention")
-
-_PROFILE_TABLES = (Days, Hours, Server, IpAddress)
 
 class DataRetentionService:
     """Purge old event logs and inactive user profiles on a configurable schedule."""
@@ -219,10 +213,7 @@ class DataRetentionService:
             # Union of dates across all activity sources
             all_activity = union_all(
                 select(EventLog.username.label("username"), EventLog.date.label("date")),
-                select(Days.username.label("username"), Days.date.label("date")),
-                select(Hours.username.label("username"), Hours.date.label("date")),
-                select(Server.username.label("username"), Server.date.label("date")),
-                select(IpAddress.username.label("username"), IpAddress.date.label("date")),
+                select(Profile.username.label("username"), Profile.date.label("date")),
             ).subquery("all_activity")
 
             inactive_q = (
@@ -234,12 +225,10 @@ class DataRetentionService:
             return list(session.execute(inactive_q).scalars().all())
 
     def _delete_user_records(self, username: str) -> None:
-        """Delete all records for a single username across all profile tables."""
+        """Delete all records for a username across profiles, events, and users."""
         with self._session_factory() as session:
-            for table in _PROFILE_TABLES:
-                session.execute(
-                    delete(table).where(table.username == username)
-                )
+            session.execute(delete(Profile).where(Profile.username == username))
+            session.execute(delete(EventLog).where(EventLog.username == username))
             session.execute(delete(User).where(User.username == username))
             session.commit()
             logger.debug(

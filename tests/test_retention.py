@@ -17,11 +17,9 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 
 from entities import (  # noqa: E402
     AuditRecord,
-    Days,
     EventLog,
-    Hours,
-    IpAddress,
-    Server,
+    Profile,
+    ProfileType,
     User,
     create_tables,
 )
@@ -78,12 +76,6 @@ def _add_user(session_factory, username: str, days_ago: int) -> None:
         session.add(user)
         session.commit()
 
-def _add_profile(session_factory, entity_cls, username: str, days_ago: int) -> None:
-    date = _ago(days_ago)
-    with session_factory() as session:
-        session.add(entity_cls(date, username, {"Mon": 1}, 1))
-        session.commit()
-
 def _count(session_factory, entity_cls) -> int:
     with session_factory() as session:
         return len(session.execute(select(entity_cls)).scalars().all())
@@ -91,6 +83,30 @@ def _count(session_factory, entity_cls) -> int:
 def _usernames(session_factory, entity_cls) -> set[str]:
     with session_factory() as session:
         return {r.username for r in session.execute(select(entity_cls)).scalars().all()}
+
+def _add_profile(
+    session_factory, profile_type: ProfileType, username: str, days_ago: int
+) -> None:
+    date = _ago(days_ago)
+    with session_factory() as session:
+        session.add(Profile(date, username, profile_type, {"Mon": 1}, 1))
+        session.commit()
+
+def _count_profiles(session_factory, profile_type: ProfileType | None = None) -> int:
+    with session_factory() as session:
+        query = select(Profile)
+        if profile_type is not None:
+            query = query.where(Profile.profile_type == profile_type.value)
+        return len(session.execute(query).scalars().all())
+
+def _profile_usernames(
+    session_factory, profile_type: ProfileType | None = None
+) -> set[str]:
+    with session_factory() as session:
+        query = select(Profile)
+        if profile_type is not None:
+            query = query.where(Profile.profile_type == profile_type.value)
+        return {r.username for r in session.execute(query).scalars().all()}
 
 # ---------------------------------------------------------------------------
 # Event log purge tests
@@ -166,31 +182,28 @@ def test_inactive_profiles_are_purged(session_factory, retention_service) -> Non
     username = "stale-user"
     _add_user(session_factory, username, 200)
     _add_event(session_factory, username, 200)
-    _add_profile(session_factory, Days, username, 200)
-    _add_profile(session_factory, Hours, username, 200)
-    _add_profile(session_factory, Server, username, 200)
-    _add_profile(session_factory, IpAddress, username, 200)
+    _add_profile(session_factory, ProfileType.DAYS, username, 200)
+    _add_profile(session_factory, ProfileType.HOURS, username, 200)
+    _add_profile(session_factory, ProfileType.SERVER, username, 200)
+    _add_profile(session_factory, ProfileType.IP_ADDRESS, username, 200)
 
     purged = retention_service.purge_inactive_profiles()
 
     assert purged == 1
     assert _count(session_factory, User) == 0
-    assert _count(session_factory, Days) == 0
-    assert _count(session_factory, Hours) == 0
-    assert _count(session_factory, Server) == 0
-    assert _count(session_factory, IpAddress) == 0
+    assert _count_profiles(session_factory) == 0
 
 def test_active_profiles_are_preserved(session_factory, retention_service) -> None:
     username = "active-user"
     _add_user(session_factory, username, 5)
     _add_event(session_factory, username, 5)
-    _add_profile(session_factory, Days, username, 5)
+    _add_profile(session_factory, ProfileType.DAYS, username, 5)
 
     purged = retention_service.purge_inactive_profiles()
 
     assert purged == 0
     assert _count(session_factory, User) == 1
-    assert _count(session_factory, Days) == 1
+    assert _count_profiles(session_factory, ProfileType.DAYS) == 1
 
 def test_profile_inactivity_uses_most_recent_activity(
     session_factory, retention_service
@@ -198,7 +211,7 @@ def test_profile_inactivity_uses_most_recent_activity(
     """User with old profile but recent event log is NOT purged."""
     username = "recently-active"
     _add_user(session_factory, username, 200)
-    _add_profile(session_factory, Days, username, 200)  # old Days record
+    _add_profile(session_factory, ProfileType.DAYS, username, 200)  # old profile record
     _add_event(session_factory, username, 10)           # recent EventLog keeps them active
 
     purged = retention_service.purge_inactive_profiles()
@@ -285,23 +298,23 @@ def test_run_purge_full_pipeline(session_factory, retention_service) -> None:
     # 1 inactive user (with all profile types), 1 active user
     _add_user(session_factory, "stale", 200)
     _add_event(session_factory, "stale", 200)
-    for cls in (Days, Hours, Server, IpAddress):
-        _add_profile(session_factory, cls, "stale", 200)
+    for profile_type in ProfileType:
+        _add_profile(session_factory, profile_type, "stale", 200)
 
     _add_user(session_factory, "fresh", 5)
     _add_event(session_factory, "fresh", 5)
-    _add_profile(session_factory, Days, "fresh", 5)
+    _add_profile(session_factory, ProfileType.DAYS, "fresh", 5)
 
     summary = retention_service.run_purge()
 
-    assert summary["event_logs_deleted"] == 3
+    assert summary["event_logs_deleted"] == 4
     assert summary["users_purged"] == 1
     assert "elapsed_seconds" in summary
     assert "run_at" in summary
 
     # Active user's profile preserved
-    assert _count(session_factory, Days) == 1
-    assert _usernames(session_factory, Days) == {"fresh"}
+    assert _count_profiles(session_factory, ProfileType.DAYS) == 1
+    assert _profile_usernames(session_factory, ProfileType.DAYS) == {"fresh"}
 
     # Old event logs gone; recent remain (plus the "fresh" user's event log)
     remaining = _usernames(session_factory, EventLog)

@@ -13,7 +13,7 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from entities import Days, EventLog, Threshold, User  # noqa: E402
+from entities import EventLog, Profile, ProfileType, Threshold, User  # noqa: E402
 from scoring import ScoringEngine  # noqa: E402
 from services import UpdateService  # noqa: E402
 
@@ -93,7 +93,7 @@ def test_update_user_score_persists_via_repository() -> None:
 def test_update_and_return_freq_for_profile_uses_float_division() -> None:
     profile_repository = MagicMock()
     service = UpdateService(profile_repository=profile_repository)
-    profile = Days(datetime(2026, 1, 15, 10, 0, 0), "nrhine", {"Mon": 2}, 7)
+    profile = Profile(datetime(2026, 1, 15, 10, 0, 0), "nrhine", ProfileType.DAYS, {"Mon": 2}, 7)
 
     freq = service.update_and_return_freq_for_profile(profile, "Mon")
 

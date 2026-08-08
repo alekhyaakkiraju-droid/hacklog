@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from entities import Days, EventLog, Hours, IpAddress, Server, User
+from entities import EventLog, Profile, ProfileType, User
 from logging_config import get_logger
 from repositories import AuditRepository, ProfileRepository, UserRepository
 from session import Session as SessionFactory
@@ -44,7 +44,7 @@ class UpdateService:
         self._range_name = ["early", "dawn", "morning", "afternoon", "eve", "night"]
 
     def update_and_return_freq_for_profile(
-        self, profile: Days | Hours | Server | IpAddress, value: str
+        self, profile: Profile, value: str
     ) -> float:
         profile_dict = profile.profile
         profile_dict[value] = profile_dict.get(value, 0) + 1
@@ -55,14 +55,16 @@ class UpdateService:
         logger.debug(
             "profile_frequency_updated",
             operation="update_profile_frequency",
-            profile_type=type(profile).__name__,
+            profile_type=profile.profile_type,
             value=value,
             frequency=freq,
         )
         return freq
 
     def update_and_return_hour_freq_for_user(self, event_log: EventLog) -> float:
-        hour_profile = self._profile_repository.get_profile(Hours, event_log.username)
+        hour_profile = self._profile_repository.get_profile(
+            ProfileType.HOURS, event_log.username
+        )
         hour = event_log.date.hour
         range_name = self._range_name[0]
         for hour_range in self._hour_ranges:
@@ -70,26 +72,34 @@ class UpdateService:
                 range_name = self._range_name[self._hour_ranges.index(hour_range)]
                 break
         if hour_profile is None:
-            hour_profile = Hours(event_log.date, event_log.username, {}, 0)
+            hour_profile = Profile(
+                event_log.date, event_log.username, ProfileType.HOURS, {}, 0
+            )
             self._profile_repository.save_profile(hour_profile)
         hour_freq = self.update_and_return_freq_for_profile(hour_profile, range_name)
         return hour_freq
 
     def update_and_return_day_freq_for_user(self, event_log: EventLog) -> float:
-        day_profile = self._profile_repository.get_profile(Days, event_log.username)
+        day_profile = self._profile_repository.get_profile(
+            ProfileType.DAYS, event_log.username
+        )
         day = event_log.date.strftime("%a")
         if day_profile is None:
-            day_profile = Days(event_log.date, event_log.username, {}, 0)
+            day_profile = Profile(
+                event_log.date, event_log.username, ProfileType.DAYS, {}, 0
+            )
             self._profile_repository.save_profile(day_profile)
         day_freq = self.update_and_return_freq_for_profile(day_profile, day)
         return day_freq
 
     def update_and_return_server_freq_for_user(self, event_log: EventLog) -> float:
         server_profile = self._profile_repository.get_profile(
-            Server, event_log.username
+            ProfileType.SERVER, event_log.username
         )
         if server_profile is None:
-            server_profile = Server(event_log.date, event_log.username, {}, 0)
+            server_profile = Profile(
+                event_log.date, event_log.username, ProfileType.SERVER, {}, 0
+            )
             self._profile_repository.save_profile(server_profile)
         server_freq = self.update_and_return_freq_for_profile(
             server_profile, event_log.server
@@ -97,9 +107,13 @@ class UpdateService:
         return server_freq
 
     def update_and_return_ip_freq_for_user(self, event_log: EventLog) -> float:
-        ip_profile = self._profile_repository.get_profile(IpAddress, event_log.username)
+        ip_profile = self._profile_repository.get_profile(
+            ProfileType.IP_ADDRESS, event_log.username
+        )
         if ip_profile is None:
-            ip_profile = IpAddress(event_log.date, event_log.username, {}, 0)
+            ip_profile = Profile(
+                event_log.date, event_log.username, ProfileType.IP_ADDRESS, {}, 0
+            )
             self._profile_repository.save_profile(ip_profile)
         ip_freq = self.update_and_return_freq_for_profile(
             ip_profile, event_log.ip_address

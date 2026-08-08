@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from entities import Days, EventLog, Hours, IpAddress, Server, User
+from entities import EventLog, Profile, ProfileType, User
 from repositories import AuditRepository, ProfileRepository, UserRepository
 from session import Session as SessionFactory
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ class GenericDao:
             self._audit_repository.save_event(entity)
         elif isinstance(entity, User):
             self._user_repository.save(entity)
-        elif isinstance(entity, (Days, Hours, Server, IpAddress)):
+        elif isinstance(entity, Profile):
             self._profile_repository.save_profile(entity)
         else:
             raise TypeError(f"Unsupported entity type: {type(entity).__name__}")
@@ -27,7 +27,7 @@ class GenericDao:
     def merge_entity(self, entity: object) -> None:
         if isinstance(entity, User):
             self._user_repository.merge(entity)
-        elif isinstance(entity, (Days, Hours, Server, IpAddress)):
+        elif isinstance(entity, Profile):
             self._profile_repository.update_profile(entity)
         else:
             raise TypeError(
@@ -41,34 +41,39 @@ class UserDao:
     def get_user_by_name(self, user: str) -> User | None:
         return self._user_repository.get_by_username(user)
 
-class DaysDao:
+class ProfileDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
         self._profile_repository = ProfileRepository(session_factory or SessionFactory)
 
-    def get_profile_by_user(self, user: str) -> Days | None:
-        profile = self._profile_repository.get_profile(Days, user)
-        return profile if isinstance(profile, Days) else None
+    def get_profile_by_user(
+        self, profile_type: ProfileType, user: str
+    ) -> Profile | None:
+        return self._profile_repository.get_profile(profile_type, user)
+
+class DaysDao:
+    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+        self._profile_dao = ProfileDao(session_factory)
+
+    def get_profile_by_user(self, user: str) -> Profile | None:
+        return self._profile_dao.get_profile_by_user(ProfileType.DAYS, user)
 
 class HoursDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
-        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+        self._profile_dao = ProfileDao(session_factory)
 
-    def get_profile_by_user(self, user: str) -> Hours | None:
-        profile = self._profile_repository.get_profile(Hours, user)
-        return profile if isinstance(profile, Hours) else None
+    def get_profile_by_user(self, user: str) -> Profile | None:
+        return self._profile_dao.get_profile_by_user(ProfileType.HOURS, user)
 
 class IpAddressDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
-        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+        self._profile_dao = ProfileDao(session_factory)
 
-    def get_profile_by_user(self, user: str) -> IpAddress | None:
-        profile = self._profile_repository.get_profile(IpAddress, user)
-        return profile if isinstance(profile, IpAddress) else None
+    def get_profile_by_user(self, user: str) -> Profile | None:
+        return self._profile_dao.get_profile_by_user(ProfileType.IP_ADDRESS, user)
 
 class ServerDao:
     def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
-        self._profile_repository = ProfileRepository(session_factory or SessionFactory)
+        self._profile_dao = ProfileDao(session_factory)
 
-    def get_profile_by_user(self, user: str) -> Server | None:
-        profile = self._profile_repository.get_profile(Server, user)
-        return profile if isinstance(profile, Server) else None
+    def get_profile_by_user(self, user: str) -> Profile | None:
+        return self._profile_dao.get_profile_by_user(ProfileType.SERVER, user)

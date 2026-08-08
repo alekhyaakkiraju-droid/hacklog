@@ -2,7 +2,7 @@
 
 import pytest
 
-from hacklog.entities import IpAddress, SyslogMsg
+from hacklog.entities import IpLocation, SyslogMsg
 from hacklog.metrics import messages_dropped_total
 from hacklog.parse import Parser
 from hacklog.validators import (
@@ -98,8 +98,8 @@ def test_ip_address_entity_checks_work_with_validated_ips(
     ip_address: str, vpn: bool, internal: bool
 ) -> None:
     assert validate_ip_address(ip_address).valid is True
-    assert IpAddress.check_ip_for_vpn(ip_address) is vpn
-    assert IpAddress.check_ip_for_internal(ip_address) is internal
+    assert IpLocation.check_ip_for_vpn(ip_address) is vpn
+    assert IpLocation.check_ip_for_internal(ip_address) is internal
 
 @pytest.mark.parametrize(
     ("fixture_name", "expected_parsed"),

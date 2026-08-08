@@ -1,7 +1,7 @@
 """SQLAlchemy entity models and shared constants for hacklog."""
 
 from datetime import datetime
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, create_engine
@@ -29,6 +29,14 @@ class Threshold(IntEnum):
     SCARY = 30
     SCARECOUNT = 2
     SCAREDATEEXPIRE = 1
+
+class ProfileType(StrEnum):
+    """Discriminator for consolidated user behavior profiles."""
+
+    DAYS = "days"
+    HOURS = "hours"
+    SERVER = "server"
+    IP_ADDRESS = "ipAddress"
 
 def create_db_engine(server: Any) -> Engine:
     """Create and return the SQLAlchemy engine for the configured database file."""
@@ -77,11 +85,14 @@ class User(Base):
         self.scare_count = 0
         self.last_scare_date = date.today()
 
-class Days(Base):
-    __tablename__ = "days"
+class Profile(Base):
+    """Unified frequency profile for day, hour, server, and IP dimensions."""
 
-    date = Column("date", DateTime, primary_key=True)
+    __tablename__ = "profiles"
+
+    profile_type = Column("profileType", String, primary_key=True)
     username = Column("username", String, primary_key=True)
+    date = Column("date", DateTime)
     profile = Column("profile", MutableProfile)
     total_count = Column("totalCount", Integer)
 
@@ -89,73 +100,22 @@ class Days(Base):
         self,
         date: datetime,
         username: str,
+        profile_type: ProfileType | str,
         profile: dict[str, int],
         total_count: int,
     ) -> None:
         self.date = date
         self.username = username
+        self.profile_type = (
+            profile_type.value
+            if isinstance(profile_type, ProfileType)
+            else profile_type
+        )
         self.profile = profile
         self.total_count = total_count
 
-class Hours(Base):
-    __tablename__ = "hours"
-
-    date = Column("date", DateTime, primary_key=True)
-    username = Column("username", String, primary_key=True)
-    profile = Column("profile", MutableProfile)
-    total_count = Column("totalCount", Integer)
-
-    def __init__(
-        self,
-        date: datetime,
-        username: str,
-        profile: dict[str, int],
-        total_count: int,
-    ) -> None:
-        self.date = date
-        self.username = username
-        self.profile = profile
-        self.total_count = total_count
-
-class Server(Base):
-    __tablename__ = "server"
-
-    date = Column("date", DateTime, primary_key=True)
-    username = Column("username", String, primary_key=True)
-    profile = Column("profile", MutableProfile)
-    total_count = Column("totalCount", Integer)
-
-    def __init__(
-        self,
-        date: datetime,
-        username: str,
-        profile: dict[str, int],
-        total_count: int,
-    ) -> None:
-        self.date = date
-        self.username = username
-        self.profile = profile
-        self.total_count = total_count
-
-class IpAddress(Base):
-    __tablename__ = "ipAddress"
-
-    date = Column("date", DateTime, primary_key=True)
-    username = Column("username", String, primary_key=True)
-    profile = Column("profile", MutableProfile)
-    total_count = Column("totalCount", Integer)
-
-    def __init__(
-        self,
-        date: datetime,
-        username: str,
-        profile: dict[str, int],
-        total_count: int,
-    ) -> None:
-        self.date = date
-        self.username = username
-        self.profile = profile
-        self.total_count = total_count
+class IpLocation:
+    """IP address classification helpers (formerly on IpAddress profile entity)."""
 
     @staticmethod
     def check_ip_for_vpn(ip: str) -> bool:

@@ -23,11 +23,9 @@ for _path in (_HACKLOG_DIR, _TESTS_DIR.parent):
 from hacklog.alerting import AlertService  # noqa: E402
 from hacklog.config import SmtpConfig, SyslogConfig  # noqa: E402
 from hacklog.entities import (  # noqa: E402
-    Days,
     EventLog,
-    Hours,
-    IpAddress,
-    Server,
+    Profile,
+    ProfileType,
     SyslogMsg,
     Threshold,
     User,
@@ -194,16 +192,16 @@ async def test_e2e_critical_score_triggers_alert(
     rare = 1
     total = 500
     update_service._profile_repository.save_profile(
-        Hours(now, username, {range_name: rare}, total)
+        Profile(now, username, ProfileType.HOURS, {range_name: rare}, total)
     )
     update_service._profile_repository.save_profile(
-        Days(now, username, {now.strftime("%a"): rare}, total)
+        Profile(now, username, ProfileType.DAYS, {now.strftime("%a"): rare}, total)
     )
     update_service._profile_repository.save_profile(
-        Server(now, username, {"127.0.0.1": rare}, total)
+        Profile(now, username, ProfileType.SERVER, {"127.0.0.1": rare}, total)
     )
     update_service._profile_repository.save_profile(
-        IpAddress(now, username, {"203.0.113.50": rare}, total)
+        Profile(now, username, ProfileType.IP_ADDRESS, {"203.0.113.50": rare}, total)
     )
 
     e2e_pipeline.send_udp(
