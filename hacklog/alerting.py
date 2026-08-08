@@ -16,15 +16,15 @@ import aiosmtplib
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPConnectError, SMTPException
 
 try:
-    from hacklog.config import SmtpConfig
-    from hacklog.entities import AuditRecord, EventLog, User
-    from hacklog.logging_config import get_logger
-    from hacklog.repositories import AuditRepository
-except ImportError:
     from config import SmtpConfig
     from entities import AuditRecord, EventLog, User
     from logging_config import get_logger
     from repositories import AuditRepository
+except ImportError:
+    from hacklog.config import SmtpConfig
+    from hacklog.entities import AuditRecord, EventLog, User
+    from hacklog.logging_config import get_logger
+    from hacklog.repositories import AuditRepository
 
 logger = get_logger("alerting")
 

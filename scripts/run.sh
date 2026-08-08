@@ -18,7 +18,11 @@ cd "$ROOT"
 PIDFILE="${HACKLOG_PIDFILE:-$ROOT/.hacklog-dev.pid}"
 LOGFILE="${HACKLOG_LOGFILE:-$ROOT/var/log/hacklog-dev.log}"
 CONFIG="${HACKLOG_CONFIG:-$ROOT/conf/server.conf}"
-PYTHON="${PYTHON:-python3}"
+if [ -x "$ROOT/.venv/bin/python3" ]; then
+    PYTHON="$ROOT/.venv/bin/python3"
+else
+    PYTHON="${PYTHON:-python3}"
+fi
 
 if [ -f "$PIDFILE" ]; then
     OLD_PID="$(cat "$PIDFILE")"

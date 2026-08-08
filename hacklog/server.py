@@ -22,8 +22,8 @@ class SyslogServer:
 
     def __init__(self) -> None:
         self.db_file = "hacklog.db"
-        self.port = 10514
-        self.bind_address = "127.0.0.1"
+        self.port: int | None = None
+        self.bind_address: str | None = None
         self.config_file = "../conf/server.conf"
         self.loglevel = 10
         self.usage = "usage: %prog -c config_file"
