@@ -202,7 +202,7 @@ class ScoringEngine:
         subscore = math.log(freq, 2)
         subscore = subscore * -10
         if subscore > 100:
-            return 100.0
+            return 1.0
         return float(subscore) / 100
 
     @staticmethod
