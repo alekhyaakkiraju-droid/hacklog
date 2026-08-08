@@ -1,4 +1,4 @@
-"""WO-041: Parser accepts SyslogMsg entities instead of raw log strings."""
+"""WO-041 / WO-043: Parser accepts SyslogMsg entities instead of raw strings."""
 
 from __future__ import annotations
 
@@ -80,3 +80,23 @@ def test_parse_log_line_distinguishes_host_from_data_prefix(parser: Parser) -> N
     assert event is not None
     assert event.server == "actual-relay"
     assert event.username == "carol"
+
+
+def test_parse_log_line_signature_requires_syslog_msg() -> None:
+    """WO-043: public API accepts SyslogMsg, not raw strings."""
+    import inspect
+
+    signature = inspect.signature(Parser.parse_log_line)
+    message_param = signature.parameters["message"]
+    assert "SyslogMsg" in str(message_param.annotation)
+
+
+def test_all_call_sites_use_syslog_msg_wrapper() -> None:
+    """WO-043: syslog_server passes SyslogMsg into parse_log_line."""
+    import inspect
+
+    from syslog_server import message_consumer
+
+    source = inspect.getsource(message_consumer)
+    assert "parse_log_line(msg)" in source
+    assert "isinstance(msg, SyslogMsg)" in source
