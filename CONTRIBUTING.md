@@ -67,6 +67,21 @@ pytest tests/ -q
 
 All tests should pass. You are ready to develop.
 
+### 5. Run the server locally
+
+Hacklog reads **SMTP secrets and tuning from `HACKLOG_*` environment variables** via `ConfigManager` (`hacklog/config.py`). Legacy bind/port and parser patterns still come from `conf/server.conf`.
+
+```bash
+cp .env.example .env          # fill in HACKLOG_SMTP_* and HACKLOG_ALERT_RECIPIENT
+make dev-start                # or: ./scripts/run.sh
+make dev-status               # check pid file
+make dev-stop                 # SIGTERM graceful shutdown (no kill -9)
+```
+
+Logs are written to `var/log/hacklog-dev.log`. The pid file defaults to `.hacklog-dev.pid` in the repo root.
+
+**Docker alternative:** `docker compose up -d` (see README) — same `HACKLOG_*` variables, container-managed lifecycle.
+
 ---
 
 ## Running Tests

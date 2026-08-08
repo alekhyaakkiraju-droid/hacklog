@@ -305,7 +305,13 @@ cd hacklog
 python -m venv .venv && source .venv/bin/activate
 pip install -e '.[test,dev]'
 pytest tests/
+
+# Local server (requires .env with HACKLOG_SMTP_* secrets)
+cp .env.example .env && make dev-start
+make dev-stop   # graceful SIGTERM shutdown
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions, code style guide, and PR process.
 
 ---
 

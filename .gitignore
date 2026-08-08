@@ -43,3 +43,7 @@ nosetests.xml
 .cursor/rules/forge-workflow.mdc
 .claude/
 CLAUDE.md
+
+# Local dev server artifacts
+.hacklog-dev.pid
+var/log/
