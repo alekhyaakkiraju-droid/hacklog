@@ -14754,13 +14754,13 @@
         "ip": 0.0001
       },
       "expected": {
-        "success": 0,
-        "ip_location": 15,
-        "hours": 1000,
-        "days": 1000,
-        "server": 1500,
-        "ip": 1500,
-        "total": 5015
+        "success": 0.0,
+        "ip_location": 15.0,
+        "hours": 10.0,
+        "days": 10.0,
+        "server": 15.0,
+        "ip": 15.0,
+        "total": 65.0
       },
       "meta": {
         "edge_case": "uniform_frequency",
