@@ -74,6 +74,12 @@ class SyslogServer:
             return Parser(self.success_pattern, self.failure_pattern, self.test_enabled)
         return Parser()
 
+    def _release_resources(self) -> None:
+        if self.db_engine is not None:
+            self.db_engine.dispose()
+            self.db_engine = None
+        logger.info("server_resources_released", operation="shutdown")
+
     def run(self) -> None:
         if self.scoring_engine is None:
             raise RuntimeError("ScoringEngine must be wired before run()")
@@ -84,16 +90,20 @@ class SyslogServer:
         port = self.port or syslog.port
         parser = self._build_parser()
 
-        asyncio.run(
-            run_async_syslog_server(
-                bind_address=bind_address,
-                port=port,
-                parser=parser,
-                process_event=self.scoring_engine.process_event_log,
-                syslog_config=syslog,
-                queue=self.message_queue,
+        try:
+            asyncio.run(
+                run_async_syslog_server(
+                    bind_address=bind_address,
+                    port=port,
+                    parser=parser,
+                    process_event=self.scoring_engine.process_event_log,
+                    syslog_config=syslog,
+                    queue=self.message_queue,
+                    on_shutdown=self._release_resources,
+                )
             )
-        )
+        finally:
+            self._release_resources()
 
     def start(self) -> None:
         self.read_cmd_args()
