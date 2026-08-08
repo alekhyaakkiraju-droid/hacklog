@@ -82,6 +82,20 @@ Logs are written to `var/log/hacklog-dev.log`. The pid file defaults to `.hacklo
 
 **Docker alternative:** `docker compose up -d` (see README) — same `HACKLOG_*` variables, container-managed lifecycle.
 
+**Production:** use `deploy/hacklog.service` (systemd) — see README *Quick Start — Bare Metal*.
+
+#### Legacy `hacklog/run.sh` and `hacklog/stop.sh` (removed)
+
+Older clones included crude helpers under `hacklog/run.sh` and `hacklog/stop.sh` that invoked `python server.py` directly and stopped the process with `ps | grep | kill -9`. Those scripts are **removed** in favor of:
+
+| Use case | Replacement |
+|----------|-------------|
+| Local development | `make dev-start` / `make dev-stop` (`scripts/run.sh`, `scripts/stop.sh`) |
+| Container deployment | `docker compose up` / `docker compose down` |
+| Bare-metal production | `systemctl start hacklog` / `systemctl stop hacklog` (`deploy/hacklog.service`) |
+
+The modern dev scripts use correct `#!/bin/sh` shebangs, load `HACKLOG_*` via ConfigManager, and stop with **SIGTERM** (graceful shutdown) using a pid file — not `kill -9`.
+
 ---
 
 ## Running Tests
