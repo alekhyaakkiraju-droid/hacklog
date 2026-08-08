@@ -32,17 +32,36 @@ class Parser:
             r"user=([0-9a-zA-Z_-]+)"
         )
 
+    @staticmethod
+    def _ssh_log_payload(data: str) -> str:
+        """Return the SSH message body from syslog data.
+
+        Supports both modern UDP payloads (priority/program prefix only) and
+        legacy payloads that embedded the relay host as the first token.
+        """
+        logline = re.sub(r"\s{2,}", " ", data.strip())
+        parts = logline.split(" ")
+        if len(parts) > 1 and parts[1].startswith("<"):
+            parts.pop(0)
+        if parts and parts[0].startswith("<"):
+            parts.pop(0)
+        return " ".join(parts)
+
     def parse_log_line(self, message: SyslogMsg | None) -> EventLog | None:
+        """Parse a syslog datagram wrapped as :class:`SyslogMsg`.
+
+        The log payload is read from ``message.data``; the originating server
+        hostname is taken from ``message.host`` for Linux SSH events (unless
+        test patterns embed HOST tokens).
+        """
         return_event: EventLog | None | bool = False
         if message:
             line = message.data
             host = message.host
             logline = re.sub(r"\s{2,}", " ", line)
             if "Source Network Address" not in line and "Account Name:" not in line:
-                logline_parts = logline.split(" ")
-                if len(logline_parts) > 5:
-                    logline_parts.pop(0)
-                    log_entry = " ".join(logline_parts)
+                log_entry = self._ssh_log_payload(line)
+                if log_entry:
                     match = re.match(self.success_pattern, log_entry)
                     if match:
                         user_name = match.groups(0)[0]
